@@ -1,0 +1,21 @@
+{
+  "name": "lg-website-inspector",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test --project=chromium",
+    "test:headed": "playwright test --project=chromium --headed",
+    "test:all": "playwright test",
+    "report:html": "playwright show-report"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1"
+  }
+}
