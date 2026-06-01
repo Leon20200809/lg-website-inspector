@@ -3,6 +3,7 @@ export type TargetSiteMode = 'own' | 'external' | 'demo';
 
 // サイト情報の型定義
 export interface TargetSite {
+  id: string;
   name: string;
   base_url: string;
   mode: TargetSiteMode;
@@ -21,6 +22,7 @@ export const getActiveTargetSites = (): TargetSite[] => {
 // ここにオブジェクトを足すだけ
 export const target_sites: TargetSite[] = [
   {
+    id: "LazyGenius",
     name: 'LazyGenius.dev',
     base_url: 'https://lazygenius.dev/',
     mode: 'own',
@@ -29,6 +31,7 @@ export const target_sites: TargetSite[] = [
     allow_form_submit: false,
   },
   {
+    id: "Example",
     name: 'Example Site',
     base_url: 'https://example.com/',
     mode: 'demo',
@@ -37,6 +40,7 @@ export const target_sites: TargetSite[] = [
     allow_form_submit: false,
   },
   {
+    id: "espo-nagahoribashi",
     name: 'espo長堀橋',
     base_url: 'https://e-spo.org/',
     mode: 'external',

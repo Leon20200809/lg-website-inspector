@@ -9,13 +9,19 @@
     "test": "playwright test --project=chromium",
     "test:headed": "playwright test --project=chromium --headed",
     "test:all": "playwright test",
-    "report:html": "playwright show-report"
+    "report:html": "playwright show-report",
+    "report:md": "tsx scripts/report.ts",
+    "report:pdf": "tsx scripts/pdf.ts"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@types/node": "^25.9.1"
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.4"
+  },
+  "dependencies": {
+    "markdown-it": "^14.2.0"
   }
 }

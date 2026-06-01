@@ -1,25 +1,57 @@
 /**
- * npm run test:headed -- tests/smoke.spec.ts
  * WEBサイトの必須機能が正常に動作することを確認するのが目的
-    ページが開くか	サイトが死んでいないか
-    title が取れるか	HTMLが返ってきているか
-    h1 があるか	基本構造があるか
-    主要要素が見えるか	表示崩壊していないか
+ * npm run test:headed -- tests/smoke.spec.ts
+ *
+ * ページが開くか      サイトが死んでいないか
+ * title が取れるか   HTMLが返ってきているか
+ * h1 があるか        基本構造があるか
+ *
+ * smoke-summary.json を生成し、
+ * 将来的なPDFレポート材料として保存する。
  */
 
+import fs from "fs";
+import path from "path";
 import { test, expect } from "@playwright/test";
 import { getActiveTargetSites } from "../helpers/target";
+
+const REPORTS_DIR = "reports";
+const DATA_DIR = "data";
+const SMOKE_SUMMARY_FILE = "smoke-summary.json";
 
 const activeSites = getActiveTargetSites();
 
 activeSites.forEach((target_site) => {
-  test(`${target_site.name} のトップページが表示できる`, async ({ page }) => {
-    await page.goto(target_site.base_url);
+  test(`${target_site.name} のトップページ基本情報を確認する`, async ({
+    page,
+  }) => {
+    const dataDir = path.join(REPORTS_DIR, target_site.id, DATA_DIR);
+    const summaryPath = path.join(dataDir, SMOKE_SUMMARY_FILE);
 
-    // 現在開いているページの title を取得する
-    // デバッグ時に「実際の title が何だったか」を確認したいときに使う
+    fs.mkdirSync(dataDir, {
+      recursive: true,
+    });
+
+    const smokeSummary = {
+      site_id: target_site.id,
+      site_name: target_site.name,
+      base_url: target_site.base_url,
+      page_opened: false,
+      title_checked: false,
+      title_text: "",
+      title_matched_keywords: false,
+      h1_exists: false,
+      h1_text: "",
+    };
+
+    const response = await page.goto(target_site.base_url);
+
+    smokeSummary.page_opened = response !== null && response.ok();
+
     const title = await page.title();
-    console.log(`${target_site.name} の title: ${title}`);
+
+    smokeSummary.title_text = title;
+    smokeSummary.title_checked = title.length > 0;
 
     // expected_title_keywords の配列を「A または B または C」の正規表現に変換する
     // 例: ['LazyGenius', 'Leon', 'Web']
@@ -30,14 +62,29 @@ activeSites.forEach((target_site) => {
       "i",
     );
 
-    await expect(page).toHaveTitle(titleRegex);
-  });
-
-  test(`${target_site.name} の"トップページに h1 が存在する"`, async ({ page }) => {
-    await page.goto(target_site.base_url);
+    smokeSummary.title_matched_keywords = titleRegex.test(title);
 
     const heading = page.locator("h1").first();
+    const headingCount = await page.locator("h1").count();
 
+    smokeSummary.h1_exists = headingCount > 0;
+
+    if (smokeSummary.h1_exists) {
+      const h1Text = await heading.textContent();
+
+      smokeSummary.h1_text = h1Text?.trim() || "";
+    }
+
+    fs.writeFileSync(
+      summaryPath,
+      JSON.stringify(smokeSummary, null, 2),
+      "utf-8",
+    );
+
+    console.log(`スモーク集計JSONを保存しました: ${summaryPath}`);
+    console.log(smokeSummary);
+
+    await expect(page).toHaveTitle(titleRegex);
     await expect(heading).toBeVisible();
   });
 });
