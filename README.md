@@ -2,29 +2,52 @@
 
 Playwright を使って、Webサイトの基本的な表示確認・リンク確認・レスポンシブ表示確認・スクリーンショット取得を行うための検査ツールです。
 
+正式名称は **LazyGenius Website Inspector** です。
+
 目的は、公開前の自作サイトや、メンテナンス不足が疑われるWebサイトに対して、最低限の動作確認を自動化し、改善提案や保守確認の材料を集めることです。
 
 ---
 
-## 現在の状態
+## このツールでできること
 
-第一形態として、Playwright の初期セットアップまで完了。
+現在は、以下の簡易確認に対応しています。
 
-確認済みのこと。
+* トップページが開けるか確認
+* ページタイトルの取得
+* title に想定キーワードが含まれるか確認
+* h1 要素の存在確認
+* h1 テキストの取得
+* トップページ内リンクの集計
+* PC / スマホ幅のスクリーンショット保存
+* 検査結果の JSON 保存
+* Markdown レポート生成
+* AI投入用ハーネスMarkdown生成
+* PDF レポート生成
 
-* npm プロジェクト初期化
-* Playwright 導入
-* Chromium / Firefox / WebKit のサンプルテスト実行
-* HTMLレポート表示確認
-* `smoke.spec.ts` のMVP作成
-* `navigation.spec.ts` のMVP作成
-* `helpers/target.ts` に対象サイト設定を分離
+---
 
-最初の検査対象サイト。
+## 現在のパイプライン
+
+現在は、以下の流れまで開通しています。
 
 ```text
-https://lazygenius.dev/
+Playwrightで確認
+↓
+検査結果をJSON保存
+↓
+AI投入用 ai-harness.md を生成
+↓
+report-source.md を生成
+↓
+report-source.html を生成
+↓
+report.pdf を生成
 ```
+
+このツールでは、検査結果JSONをそのまま最終文書にせず、AIに渡すための `ai-harness.md` を生成します。
+
+`ai-harness.md` には、観測結果・表現ルール・禁止事項・出力形式をまとめています。
+これにより、AIが出力する改善提案文を制御し、人間が最終確認しやすいレポート作成フローを目指しています。
 
 ---
 
@@ -34,6 +57,8 @@ https://lazygenius.dev/
 * npm
 * TypeScript
 * Playwright
+* markdown-it
+* tsx
 
 ---
 
@@ -69,29 +94,44 @@ npm run report:html
 npm run test -- tests/smoke.spec.ts
 ```
 
-ブラウザ表示ありで特定ファイルだけ実行。
+AI投入用ハーネスMarkdownを生成。
 
 ```bash
-npm run test:headed -- tests/smoke.spec.ts
+npm run harness:ai
+```
+
+Markdownレポートを生成。
+
+```bash
+npm run report:md
+```
+
+PDFレポートを生成。
+
+```bash
+npm run report:pdf
 ```
 
 ---
 
 ## package.json scripts
 
-現時点の推奨設定。
+推奨設定例。
 
 ```json
 "scripts": {
   "test": "playwright test --project=chromium",
   "test:headed": "playwright test --project=chromium --headed",
   "test:all": "playwright test",
-  "report:html": "playwright show-report"
+  "report:html": "playwright show-report",
+  "harness:ai": "tsx scripts/generate-ai-harness.ts",
+  "report:md": "tsx scripts/report.ts",
+  "report:pdf": "tsx scripts/pdf.ts"
 }
 ```
 
-普段は Chromium のみで軽く確認する。
-必要な時だけ `test:all` で Chromium / Firefox / WebKit をまとめて確認する。
+普段は Chromium のみで軽く確認します。
+必要な時だけ `test:all` で Chromium / Firefox / WebKit をまとめて確認します。
 
 ---
 
@@ -107,16 +147,30 @@ lg-website-inspector/
 ├── .env.example
 ├── tests/
 │   ├── smoke.spec.ts
-│   ├── screenshot.spec.ts
-│   └── navigation.spec.ts
+│   ├── navigation.spec.ts
+│   └── screenshot.spec.ts
 ├── helpers/
 │   ├── target.ts
 │   └── screenshot.ts
-├── reports/
-│   └── .gitkeep
-└── screenshots/
-    └── .gitkeep
+├── scripts/
+│   ├── generate-ai-harness.ts
+│   ├── report.ts
+│   └── pdf.ts
+└── reports/
+    └── {site_id}/
+        ├── data/
+        │   ├── smoke-summary.json
+        │   └── navigation-summary.json
+        ├── images/
+        │   ├── pc-home.png
+        │   └── sp-home.png
+        ├── ai-harness.md
+        ├── report-source.md
+        ├── report-source.html
+        └── report.pdf
 ```
+
+`screenshots/` は使わず、スクリーンショットは最初から `reports/{site_id}/images/` に保存します。
 
 ---
 
@@ -124,78 +178,186 @@ lg-website-inspector/
 
 ### tests/smoke.spec.ts
 
-最低限、サイトが生きているかを確認するテスト。
+最低限、サイトが生きているかを確認するテストです。
 
 確認内容。
 
 * 対象URLを開けるか
-* title が期待する内容か
+* title を取得できるか
+* title が期待キーワードを含むか
 * h1 が存在するか
+* h1 テキストを取得できるか
 
-スモークテストは、細かい検査ではなく「最低限燃えていないか」を見る確認。
+結果は以下に保存します。
+
+```text
+reports/{site_id}/data/smoke-summary.json
+```
 
 ---
 
 ### tests/navigation.spec.ts
 
-ページ内リンクや内部リンクの導線を確認するテスト。
+トップページ内のリンク・導線情報を収集するテストです。
 
-現在のMVPでは、トップページ内のリンクを取得し、内部リンクを検査する。
+確認内容。
 
-今回の学び。
+* リンク総数
+* ページ内アンカー数
+* hrefなしリンク数
+* #のみリンク数
+* 電話リンク数
+* メールリンク数
+* PDFリンク数
+* 内部リンク数
+* 外部リンク数
+* 要確認候補リンク数
 
-* `page.goto()` は通常のページ遷移リンクには向いている
-* `#about` などのページ内アンカーでは HTTP response が返らないことがある
-* ページ内アンカーは `response.ok()` ではなく、対象IDの存在確認で見る方が自然
+結果は以下に保存します。
+
+```text
+reports/{site_id}/data/navigation-summary.json
+```
 
 ---
 
 ### tests/screenshot.spec.ts
 
-今後、PC幅・スマホ幅のスクリーンショット保存を担当する予定。
+PC幅・スマホ幅の代表スクリーンショットを保存するテストです。
 
-次に育てる候補。
+保存先。
 
-* PC幅スクリーンショット
-* スマホ幅スクリーンショット
-* 保存先を `screenshots/` に統一
-* ファイル名にサイト名・画面幅・日時を入れる
+```text
+reports/{site_id}/images/
+```
+
+生成される画像。
+
+```text
+pc-home.png
+sp-home.png
+```
 
 ---
 
 ### helpers/target.ts
 
-検査対象サイトの設定を置く場所。
+検査対象サイトの設定を置く場所です。
 
-例。
+主な項目。
 
-```ts
-export const target_site = {
-  name: 'LazyGenius.dev',
-  base_url: 'https://lazygenius.dev/',
-  expected_title_keywords: [
-    'LazyGenius',
-    'Leon',
-    'Web',
-    'WordPress',
-  ],
-};
+```text
+id
+name
+base_url
+mode
+is_active
+expected_title_keywords
+allow_form_submit
 ```
 
-URLや期待するtitleキーワードをここにまとめることで、テスト本体を書き換えずに対象サイトを変更できる。
+`is_active: true` のサイトだけ検査対象にします。
+
+外部サイトを確認する場合は、原則として以下の設定にします。
+
+```text
+mode: external
+allow_form_submit: false
+```
 
 ---
 
-### helpers/screenshot.ts
+### scripts/generate-ai-harness.ts
 
-今後、スクリーンショット保存処理を共通化する場所。
+検査結果JSONを読み込み、主要AIに投げやすい `ai-harness.md` を生成するスクリプトです。
 
-例。
+`ai-harness.md` には、以下をまとめます。
 
-* 保存ファイル名の生成
-* 保存先パスの生成
-* PC / SP の画面幅設定
-* 日付付きファイル名の作成
+* 検査結果JSON
+* AIへの役割指定
+* 表現ルール
+* 避ける表現
+* 断定してよいこと
+* 断定してはいけないこと
+* 出力形式
+
+AIに丸投げするのではなく、AIが外しにくい作業場を整えるための中間ファイルです。
+
+---
+
+### scripts/report.ts
+
+検査結果JSONを読み込み、人間向けの `report-source.md` を生成するスクリプトです。
+
+生成先。
+
+```text
+reports/{site_id}/report-source.md
+```
+
+---
+
+### scripts/pdf.ts
+
+MarkdownをHTMLに変換し、さらにPDF化するスクリプトです。
+
+流れ。
+
+```text
+report-source.md
+↓
+report-source.html
+↓
+report.pdf
+```
+
+---
+
+## 外部サイト確認時の方針
+
+このツールは、脆弱性診断ではありません。
+
+やってよいこと。
+
+* ページを開く
+* title / h1 を確認する
+* リンク情報を確認する
+* スクリーンショットを撮る
+* スマホ幅で表示確認する
+
+避けること。
+
+* 問い合わせフォームの自動送信
+* 短時間の大量アクセス
+* ログイン領域へのアクセス
+* 負荷テスト
+* 脆弱性診断に見える確認
+
+レポート内でも、公開範囲に基づく簡易確認であることを明記します。
+
+---
+
+## レポートの温度感
+
+断定しすぎず、相手に配慮した表現にします。
+
+避ける表現。
+
+```text
+問題があります
+壊れています
+修正すべきです
+SEO的に大きな損失です
+```
+
+使う表現。
+
+```text
+確認するとよさそうです
+改善余地がありそうです
+整理すると伝わりやすくなります
+現時点では大きな不備は確認されませんでした
+```
 
 ---
 
@@ -213,85 +375,40 @@ node_modules/
 .env
 ```
 
-`node_modules` や Playwright の実行結果レポートは成果物なので、Git管理しない。
+`node_modules` や Playwright の実行結果レポートは成果物なので、Git管理しません。
+
+必要に応じて、生成済みのPDFや画像をGit管理するかどうかは運用方針に合わせて判断します。
 
 ---
 
-## 現在わかったこと
+## 今後やること
 
-Playwright は、人間がブラウザで行う確認作業を TypeScript のスクリプトとして実行できる道具。
+次に育てる候補。
 
-今回つかんだこと。
-
-* `tests/*.spec.ts` にテストを書く
-* `npm run test` で実行する
-* `npm run test:headed` でブラウザ表示ありで確認できる
-* `npm run report:html` でHTMLレポートを見られる
-* どのブラウザで、どのテストが、何秒かかって、どこで落ちたか確認できる
-* 3ブラウザ実行時は `テスト数 × ブラウザ数` で件数が増える
-* ページ内アンカーと通常ページリンクは扱いを分けた方がいい
+1. 改善候補セクションをJSON値に応じて賢くする
+2. h1_text が空の場合、改善候補に反映する
+3. hrefなし / #のみ / suspicious_links がある場合、改善候補に反映する
+4. PDFの文面をより自然な社会語に整える
+5. 画像の扱いを検討する
+6. meta description や画像altの確認を追加する
+7. 主要下層ページの確認を追加する
 
 ---
 
-## 次にやること
+## このプロジェクトの考え方
 
-次に育てるなら、この順番。
+このプロジェクトは、単なるPlaywright練習ではありません。
 
-1. `screenshot.spec.ts` を作る
-2. PC幅スクリーンショットを保存する
-3. スマホ幅スクリーンショットを保存する
-4. `helpers/screenshot.ts` に保存処理を分離する
-5. `navigation.spec.ts` でページ内アンカーのID存在確認を追加する
-6. Markdownレポート出力を検討する
-
----
-
-## 次回再開時のおすすめコマンド
-
-まず状態確認。
-
-```bash
-npm run test -- tests/smoke.spec.ts
-```
-
-ブラウザ表示ありで確認。
-
-```bash
-npm run test:headed -- tests/smoke.spec.ts
-```
-
-ナビゲーション確認。
-
-```bash
-npm run test:headed -- tests/navigation.spec.ts
-```
-
-HTMLレポート確認。
-
-```bash
-npm run report:html
-```
-
----
-
-## メモ
-
-今回の第一形態では、コードの完成度よりも「Playwright が何者かを体感すること」を優先した。
-
-現時点の理解。
+Webサイトの基本確認を自動化し、観測結果をJSONとして残し、AIに渡しやすいMarkdownに整え、人間が最終確認してPDF化するための小型ツールです。
 
 ```text
-smoke.spec.ts
-→ 生存確認
-
-navigation.spec.ts
-→ 導線確認
-
-screenshot.spec.ts
-→ 証拠保存
-
-helpers/target.ts
-→ 対象サイト設定
+Playwright = 観測係
+JSON = 観測結果
+ai-harness.md = AIへの作戦命令書
+AI = 文章化・提案生成
+人間 = 最終判断・修正・提出判断
+PDF = 外向きの成果物
 ```
 
-次回は `screenshot.spec.ts` から育てると、Webサイト検査ツールらしさが一気に増す。
+まずは小さく確認し、結果を残し、改善提案の材料にする。
+これが LazyGenius Website Inspector の第一目的です。

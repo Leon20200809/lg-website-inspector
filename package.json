@@ -11,7 +11,8 @@
     "test:all": "playwright test",
     "report:html": "playwright show-report",
     "report:md": "tsx scripts/report.ts",
-    "report:pdf": "tsx scripts/pdf.ts"
+    "report:pdf": "tsx scripts/pdf.ts",
+    "harness:ai": "tsx scripts/generate-ai-harness.ts"
   },
   "author": "",
   "license": "ISC",
