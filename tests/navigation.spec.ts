@@ -16,12 +16,8 @@
 
 import { test, expect } from "@playwright/test";
 import fs from "fs";
-import path from "path";
 import { getActiveTargetSites } from "../helpers/target";
-
-const REPORTS_DIR = "reports";
-const NAVIGATION_SUMMARY_FILE = "navigation-summary.json";
-const DATA_DIR = "data";
+import { getReportDataDir, getSummaryJsonPath, SUMMARY_FILES,} from "../helpers/report-paths";
 
 const activeSites = getActiveTargetSites();
 
@@ -51,7 +47,8 @@ activeSites.forEach((target_site) => {
       suspicious_links: 0,
     };
 
-    const dataDir = path.join(REPORTS_DIR, target_site.id, DATA_DIR);
+    const dataDir = getReportDataDir(target_site.id);
+    
 
     fs.mkdirSync(dataDir, {
       recursive: true,
@@ -155,7 +152,7 @@ activeSites.forEach((target_site) => {
     // ページ自体が開けていることだけは最低限確認する
     await expect(page).toHaveURL(/.+/);
 
-    const summaryPath = path.join(dataDir, NAVIGATION_SUMMARY_FILE);
+    const summaryPath = getSummaryJsonPath(target_site.id, SUMMARY_FILES.navigation);
 
     if (linkCount === 0) {
       console.log(`${target_site.name} にはリンクがありませんでした`);

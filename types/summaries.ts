@@ -1,5 +1,5 @@
 // 動作モードの定義
-export type TargetSiteMode = 'own' | 'external' | 'demo';
+export type TargetSiteMode = "own" | "external" | "demo";
 
 // サイト情報の型定義
 export interface TargetSite {

@@ -11,13 +11,13 @@
  */
 
 import fs from "fs";
-import path from "path";
 import { test, expect } from "@playwright/test";
 import { getActiveTargetSites } from "../helpers/target";
-
-const REPORTS_DIR = "reports";
-const DATA_DIR = "data";
-const SMOKE_SUMMARY_FILE = "smoke-summary.json";
+import {
+  getReportDataDir,
+  getSummaryJsonPath,
+  SUMMARY_FILES,
+} from "../helpers/report-paths";
 
 const activeSites = getActiveTargetSites();
 
@@ -25,8 +25,8 @@ activeSites.forEach((target_site) => {
   test(`${target_site.name} のトップページ基本情報を確認する`, async ({
     page,
   }) => {
-    const dataDir = path.join(REPORTS_DIR, target_site.id, DATA_DIR);
-    const summaryPath = path.join(dataDir, SMOKE_SUMMARY_FILE);
+    const dataDir = getReportDataDir(target_site.id);
+    const summaryPath = getSummaryJsonPath(target_site.id, SUMMARY_FILES.smoke);
 
     fs.mkdirSync(dataDir, {
       recursive: true,
