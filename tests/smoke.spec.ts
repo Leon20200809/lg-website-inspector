@@ -10,14 +10,10 @@
  * 将来的なPDFレポート材料として保存する。
  */
 
-import fs from "fs";
 import { test, expect } from "@playwright/test";
 import { getActiveTargetSites } from "../helpers/target";
-import {
-  getReportDataDir,
-  getSummaryJsonPath,
-  SUMMARY_FILES,
-} from "../helpers/report-paths";
+import { getSummaryJsonPath, SUMMARY_FILES,} from "../helpers/report-paths";
+import { saveJsonFile } from "../helpers/json-file";
 
 const activeSites = getActiveTargetSites();
 
@@ -25,12 +21,7 @@ activeSites.forEach((target_site) => {
   test(`${target_site.name} のトップページ基本情報を確認する`, async ({
     page,
   }) => {
-    const dataDir = getReportDataDir(target_site.id);
     const summaryPath = getSummaryJsonPath(target_site.id, SUMMARY_FILES.smoke);
-
-    fs.mkdirSync(dataDir, {
-      recursive: true,
-    });
 
     const smokeSummary = {
       site_id: target_site.id,
@@ -75,11 +66,8 @@ activeSites.forEach((target_site) => {
       smokeSummary.h1_text = h1Text?.trim() || "";
     }
 
-    fs.writeFileSync(
-      summaryPath,
-      JSON.stringify(smokeSummary, null, 2),
-      "utf-8",
-    );
+    // スモークテストの検査結果をJSONとして保存する
+    saveJsonFile(summaryPath, smokeSummary);
 
     console.log(`スモーク集計JSONを保存しました: ${summaryPath}`);
     console.log(smokeSummary);
