@@ -12,15 +12,19 @@
     "report:html": "playwright show-report",
     "report:md": "tsx scripts/report.ts",
     "report:pdf": "tsx scripts/pdf.ts",
-    "harness:ai": "tsx scripts/generate-ai-harness.ts"
+    "harness:ai": "tsx scripts/generate-ai-harness.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:watch": "tsc -p tsconfig.json --noEmit --watch"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^25.9.1",
-    "tsx": "^4.22.4"
+    "tsx": "^4.22.4",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "markdown-it": "^14.2.0"

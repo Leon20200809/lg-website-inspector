@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    // 実行環境は最新の Node.js を想定する
+    "target": "ESNext",
+
+    // Node.js の CommonJS / ESM 判定規則に合わせる
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    // process・fs・path など Node.js の型情報を読み込む
+    "types": ["node"],
+
+    // 型の曖昧さを厳しく検査する
+    "strict": true,
+
+    // 配列やオブジェクトの添字アクセスに undefined の可能性を含める
+    "noUncheckedIndexedAccess": true,
+
+    // MVPでは「省略」と「undefined」の厳密な区別を求めない
+    "exactOptionalPropertyTypes": false,
+
+    // ファイル単位変換でも安全な書き方を検査する
+    "isolatedModules": true,
+
+    // import / export を実行環境に合わせてTypeScriptが変換できるようにする
+    "verbatimModuleSyntax": false,
+
+    // 外部ライブラリ内部の型宣言までは再検査しない
+    "skipLibCheck": true,
+
+    // JavaScriptを生成せず、型チェックだけ行う
+    "noEmit": true,
+
+    // Windows / Linux間のファイル名の大小文字違いを検出する
+    "forceConsistentCasingInFileNames": true
+  },
+
+  "include": [
+    "playwright.config.ts",
+    "tests/**/*.ts",
+    "helpers/**/*.ts",
+    "scripts/**/*.ts",
+    "types/**/*.ts"
+  ],
+
+  "exclude": ["node_modules", "playwright-report", "test-results", "reports"]
+}
