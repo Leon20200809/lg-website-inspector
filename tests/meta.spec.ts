@@ -8,6 +8,7 @@ import { test, expect } from "@playwright/test";
 import { getActiveTargetSites } from "../helpers/target";
 import { getSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
 import { saveJsonFile } from "../helpers/json-file";
+import { getJapanIsoString } from "../helpers/date";
 
 import type { MetaSummary } from "../types/meta-summary";
 
@@ -23,7 +24,7 @@ activeSites.forEach((targetSite) => {
       site_name: targetSite.name,
       base_url: targetSite.base_url,
       page_url: targetSite.base_url,
-      inspected_at: new Date().toISOString(),
+      inspected_at: getJapanIsoString(),
       inspection_status: "success",
       errors: [],
 

@@ -17,6 +17,8 @@ export const SUMMARY_FILES = {
 
   meta: "meta-summary.json",
   heading: "heading-summary.json",
+  link: "link-summary.json",
+  image: "image-summary.json",
 } as const;
 
 export function getReportDir(site_id: string): string {
