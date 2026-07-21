@@ -14,6 +14,9 @@ const IMAGES_DIR = "images";
 export const SUMMARY_FILES = {
   smoke: "smoke-summary.json",
   navigation: "navigation-summary.json",
+
+  meta: "meta-summary.json",
+  heading: "heading-summary.json",
 } as const;
 
 export function getReportDir(site_id: string): string {
@@ -28,9 +31,6 @@ export function getReportImagesDir(site_id: string): string {
   return path.join(getReportDir(site_id), IMAGES_DIR);
 }
 
-export function getSummaryJsonPath(
-  site_id: string,
-  file_name: string
-): string {
+export function getSummaryJsonPath(site_id: string, file_name: string): string {
   return path.join(getReportDataDir(site_id), file_name);
 }

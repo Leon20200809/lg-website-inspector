@@ -1,24 +1,14 @@
-// 動作モードの定義
-export type TargetSiteMode = "own" | "external" | "demo";
+/**
+ * 新しい検査JSONへ移行するまで、既存レポート生成で使用する型を定義する。
+ */
 
-// サイト情報の型定義
-export interface TargetSite {
-  id: string;
-  name: string;
-  base_url: string;
-  mode: TargetSiteMode;
-  is_active: boolean;
-  expected_title_keywords: string[];
-  allow_form_submit: boolean;
-}
-
-export interface BaseSummary {
+interface LegacyBaseSummary {
   site_id: string;
   site_name: string;
   base_url: string;
 }
 
-export interface SmokeSummary extends BaseSummary {
+export interface LegacySmokeSummary extends LegacyBaseSummary {
   page_opened: boolean;
   title_checked: boolean;
   title_text: string;
@@ -27,7 +17,7 @@ export interface SmokeSummary extends BaseSummary {
   h1_text: string;
 }
 
-export interface NavigationSummary extends BaseSummary {
+export interface LegacyNavigationSummary extends LegacyBaseSummary {
   total_links: number;
   anchor_links: number;
   empty_href_links: number;

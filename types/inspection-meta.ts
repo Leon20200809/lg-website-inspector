@@ -3,7 +3,7 @@
  */
 
 import type { InspectionStatus } from "./common";
-import type { TargetSiteMode } from "./summaries";
+import type { TargetSiteMode } from "./target-site";
 
 // 今回どこまで検査したか
 export type InspectionScope = "top_page_only" | "selected_pages" | "full_site";
