@@ -10,6 +10,7 @@ import path from "path";
 const REPORTS_DIR = "reports";
 const DATA_DIR = "data";
 const IMAGES_DIR = "images";
+const FORM_DIR = "form";
 
 export const SUMMARY_FILES = {
   smoke: "smoke-summary.json",
@@ -19,6 +20,7 @@ export const SUMMARY_FILES = {
   heading: "heading-summary.json",
   link: "link-summary.json",
   image: "image-summary.json",
+  form: "form-summary.json",
 } as const;
 
 export function getReportDir(site_id: string): string {
