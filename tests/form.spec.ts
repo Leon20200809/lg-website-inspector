@@ -10,6 +10,10 @@ import { getActiveTargetSites } from "../helpers/target";
 import { getSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
 import { saveJsonFile } from "../helpers/json-file";
 import { getJapanIsoString } from "../helpers/date";
+import {
+  applyPageOpenResult,
+  openInspectionPage,
+} from "../helpers/page-inspection";
 
 import { collectFormItems } from "../inspectors/form-inspector";
 import { applyFormSummary } from "../inspectors/form-inspector";
@@ -42,10 +46,11 @@ for (const site of targetSites) {
     };
 
     try {
-      // 検査対象ページを開き、最初のHTML解析完了まで待つ
-      await page.goto(site.base_url, {
-        waitUntil: "domcontentloaded",
-      });
+      // 検査対象ページを開く
+      const response = await openInspectionPage(page, site.base_url);
+
+      // 最終URLとHTTP応答を共通検査結果へ反映する
+      applyPageOpenResult(summary, page.url(), response);
 
       // CSS・画像・JavaScriptなど、通常リソースの読込完了を待つ
       await page.waitForLoadState("load");

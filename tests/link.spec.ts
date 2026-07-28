@@ -18,14 +18,6 @@ import {
   createLinkItems,
 } from "../inspectors/link-inspector";
 
-// DOMから取得する未加工のリンク情報
-type RawLink = {
-  text: string;
-  href: string | null;
-  target: string | null;
-  rel: string | null;
-};
-
 const activeSites = getActiveTargetSites();
 
 activeSites.forEach((targetSite) => {
@@ -87,7 +79,7 @@ activeSites.forEach((targetSite) => {
       }
 
       // a要素からリンク情報を取得
-      const rawLinks: RawLink[] = await collectRawLinks(page);
+      const rawLinks = await collectRawLinks(page);
 
       // ページ内に存在するid属性を収集する
       const existingIdSet = await collectExistingIdSet(page);

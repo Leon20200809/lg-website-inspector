@@ -9,6 +9,10 @@ import { getActiveTargetSites } from "../helpers/target";
 import { getSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
 import { saveJsonFile } from "../helpers/json-file";
 import { getJapanIsoString } from "../helpers/date";
+import {
+  applyPageOpenResult,
+  openInspectionPage,
+} from "../helpers/page-inspection";
 
 import type { HeadingItem, HeadingSummary } from "../types/heading-summary";
 
@@ -40,23 +44,11 @@ activeSites.forEach((targetSite) => {
     };
 
     try {
-      // ページを取得
-      const response = await page.goto(targetSite.base_url, {
-        waitUntil: "domcontentloaded",
-      });
+      // 検査対象ページを開く
+      const response = await openInspectionPage(page, targetSite.base_url);
 
-      summary.page_url = page.url();
-
-      // HTTP応答を確認
-      if (response === null) {
-        summary.inspection_status = "partial";
-        summary.errors.push("ページのHTTPレスポンスを取得できませんでした");
-      } else if (!response.ok()) {
-        summary.inspection_status = "partial";
-        summary.errors.push(
-          `ページが正常応答ではありませんでした: HTTP ${response.status()}`,
-        );
-      }
+      // 最終URLとHTTP応答を共通検査結果へ反映する
+      applyPageOpenResult(summary, page.url(), response);
 
       // h1〜h3を取得
       const headingElements = page.locator("h1, h2, h3");

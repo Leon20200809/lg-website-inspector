@@ -9,6 +9,12 @@ import { getActiveTargetSites } from "../helpers/target";
 import { getSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
 import { saveJsonFile } from "../helpers/json-file";
 import { getJapanIsoString } from "../helpers/date";
+import {
+  applyPageOpenResult,
+  openInspectionPage,
+} from "../helpers/page-inspection";
+
+import { collectMetaInfo } from "../inspectors/meta-inspector";
 
 import type { MetaSummary } from "../types/meta-summary";
 
@@ -42,60 +48,30 @@ activeSites.forEach((targetSite) => {
     };
 
     try {
-      // ページを取得
-      const response = await page.goto(targetSite.base_url, {
-        waitUntil: "domcontentloaded",
-      });
+      // 検査対象ページを開く
+      const response = await openInspectionPage(page, targetSite.base_url);
 
-      summary.page_url = page.url();
+      // 最終URLとHTTP応答を共通検査結果へ反映する
+      applyPageOpenResult(summary, page.url(), response);
 
-      // HTTP応答を確認
-      if (response === null) {
-        summary.inspection_status = "partial";
-        summary.errors.push("ページのHTTPレスポンスを取得できませんでした");
-      } else if (!response.ok()) {
-        summary.inspection_status = "partial";
-        summary.errors.push(
-          `ページが正常応答ではありませんでした: HTTP ${response.status()}`,
-        );
-      }
+      // ページのDOMからメタ情報の事実を収集する
+      const metaInfo = await collectMetaInfo(page);
 
-      // titleを取得
-      const titleElement = page.locator("head > title").first();
+      // 収集したメタ情報を検査結果へ反映する
+      summary.title_found = metaInfo.title_found;
+      summary.title_text = metaInfo.title_text;
 
-      summary.title_found = (await titleElement.count()) > 0;
+      summary.meta_description_found = metaInfo.meta_description_found;
 
-      if (summary.title_found) {
-        summary.title_text = await page.title();
-      }
+      summary.meta_description = metaInfo.meta_description;
 
-      // meta descriptionを取得
-      const descriptionElement = page
-        .locator('meta[name="description" i]')
-        .first();
+      summary.canonical_found = metaInfo.canonical_found;
 
-      summary.meta_description_found = (await descriptionElement.count()) > 0;
+      summary.canonical_url = metaInfo.canonical_url;
 
-      if (summary.meta_description_found) {
-        summary.meta_description =
-          await descriptionElement.getAttribute("content");
-      }
+      summary.html_lang_found = metaInfo.html_lang_found;
 
-      // canonicalを取得
-      const canonicalElement = page.locator('link[rel~="canonical" i]').first();
-
-      summary.canonical_found = (await canonicalElement.count()) > 0;
-
-      if (summary.canonical_found) {
-        summary.canonical_url = await canonicalElement.getAttribute("href");
-      }
-
-      // htmlのlang属性を取得
-      const htmlElement = page.locator("html").first();
-      const htmlLang = await htmlElement.getAttribute("lang");
-
-      summary.html_lang_found = htmlLang !== null;
-      summary.html_lang = htmlLang;
+      summary.html_lang = metaInfo.html_lang;
     } catch (error: unknown) {
       // 検査失敗を記録
       summary.inspection_status = "failed";

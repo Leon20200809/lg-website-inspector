@@ -9,6 +9,10 @@ import { getActiveTargetSites } from "../helpers/target";
 import { getSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
 import { saveJsonFile } from "../helpers/json-file";
 import { getJapanIsoString } from "../helpers/date";
+import {
+  applyPageOpenResult,
+  openInspectionPage,
+} from "../helpers/page-inspection";
 
 import {
   scrollThroughPage,
@@ -17,17 +21,7 @@ import {
   applyImageSummary,
 } from "../inspectors/image-inspector";
 
-import {
-  IMAGE_ALT_STATUS,
-  IMAGE_LOAD_STATUS,
-  ImageAltStatus,
-} from "../types/image-summary";
-
-import type {
-  ImageItem,
-  ImageLoadStatus,
-  ImageSummary,
-} from "../types/image-summary";
+import type { ImageItem, ImageSummary } from "../types/image-summary";
 
 const activeSites = getActiveTargetSites();
 
@@ -53,23 +47,11 @@ activeSites.forEach((targetSite) => {
     };
 
     try {
-      // ページを取得
-      const response = await page.goto(targetSite.base_url, {
-        waitUntil: "domcontentloaded",
-      });
+      // 検査対象ページを開く
+      const response = await openInspectionPage(page, targetSite.base_url);
 
-      summary.page_url = page.url();
-
-      // HTTP応答を確認
-      if (response === null) {
-        summary.inspection_status = "partial";
-        summary.errors.push("ページのHTTPレスポンスを取得できませんでした");
-      } else if (!response.ok()) {
-        summary.inspection_status = "partial";
-        summary.errors.push(
-          `ページが正常応答ではありませんでした: HTTP ${response.status()}`,
-        );
-      }
+      // 最終URLとHTTP応答を共通検査結果へ反映する
+      applyPageOpenResult(summary, page.url(), response);
 
       // 通常画像の読み込み完了を待つ
       await page.waitForLoadState("load");
