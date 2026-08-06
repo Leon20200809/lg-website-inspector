@@ -1,14 +1,7 @@
 import type { TargetSite } from "../types/target-site";
 
-/**
- * 有効な（is_active: true）テスト対象サイトだけをフィルタリングして返す
- */
-export const getActiveTargetSites = (): TargetSite[] => {
-  return target_sites.filter((site) => site.is_active);
-};
-
 // ここにオブジェクトを足すだけ
-export const target_sites: TargetSite[] = [
+export const targetSites: TargetSite[] = [
   {
     id: "LazyGenius",
     name: "LazyGenius.dev",
@@ -37,3 +30,10 @@ export const target_sites: TargetSite[] = [
     allow_form_submit: false,
   },
 ];
+
+/**
+ * 有効なテスト対象サイトだけを返す。
+ */
+export const getActiveTargetSites = (): TargetSite[] => {
+  return targetSites.filter((site) => site.is_active);
+};
