@@ -42,6 +42,34 @@ export function createRootPageTarget(baseUrl: string): PageTarget {
 }
 
 /**
+ * 起点ページと、そのページから見つかった内部ページ候補をまとめる。
+ *
+ * 起点ページ自身へのリンクが存在しても、
+ * 正規化URLを使って1件だけ残す。
+ *
+ * @param rootPageUrl 実際に表示された起点ページURL
+ * @param links 起点ページから収集したリンク情報
+ * @returns 起点ページを先頭にした巡回対象一覧
+ */
+export function createInitialPageTargets(
+  rootPageUrl: string,
+  links: LinkItem[],
+): PageTarget[] {
+  const rootTarget = createRootPageTarget(rootPageUrl);
+
+  // 起点ページは既にpage.goto()で開いている
+  rootTarget.final_url = rootPageUrl;
+
+  const internalTargets = extractInternalPageTargets(
+    links,
+    rootPageUrl,
+    1,
+  ).filter((target) => target.normalized_url !== rootTarget.normalized_url);
+
+  return [rootTarget, ...internalTargets];
+}
+
+/**
  * LinkItem[]から検査可能な内部ページ候補を重複なしで抽出する。
  *
  * @param links 1ページから収集したリンク情報

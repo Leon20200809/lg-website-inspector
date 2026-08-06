@@ -10,6 +10,9 @@ import { getSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
 import { saveJsonFile } from "../helpers/json-file";
 import { getJapanIsoString } from "../helpers/date";
 
+import { createInitialPageTargets } from "../helpers/page-targets";
+import type { PageTargetSummary } from "../types/page-target-summary";
+
 import type { LinkItem, LinkSummary, LinkType } from "../types/link-summary";
 import {
   applyLinkSummary,
@@ -23,6 +26,11 @@ const activeSites = getActiveTargetSites();
 activeSites.forEach((targetSite) => {
   test(`${targetSite.name} のリンク情報を収集する`, async ({ page }) => {
     const summaryPath = getSummaryJsonPath(targetSite.id, SUMMARY_FILES.link);
+
+    const pageTargetsPath = getSummaryJsonPath(
+      targetSite.id,
+      SUMMARY_FILES.pageTargets,
+    );
 
     // 検査結果の初期値を作成
     const summary: LinkSummary = {
@@ -59,6 +67,15 @@ activeSites.forEach((targetSite) => {
       links: [],
     };
 
+    const pageTargetSummary: PageTargetSummary = {
+      site_id: targetSite.id,
+      site_name: targetSite.name,
+      base_url: targetSite.base_url,
+      generated_at: summary.inspected_at,
+      total_pages: 0,
+      pages: [],
+    };
+
     try {
       // ページを取得
       const response = await page.goto(targetSite.base_url, {
@@ -93,6 +110,12 @@ activeSites.forEach((targetSite) => {
 
       // 収集したリンク情報をページ全体の集計結果へ反映する
       applyLinkSummary(summary, links);
+
+      // 起点ページと内部ページ候補から巡回予定表を作る
+      const pageTargets = createInitialPageTargets(summary.page_url, links);
+
+      pageTargetSummary.pages = pageTargets;
+      pageTargetSummary.total_pages = pageTargets.length;
     } catch (error: unknown) {
       // 検査失敗を記録
       summary.inspection_status = "failed";
@@ -105,6 +128,11 @@ activeSites.forEach((targetSite) => {
     } finally {
       // 検査結果をJSONへ保存
       saveJsonFile(summaryPath, summary);
+
+      saveJsonFile(pageTargetsPath, pageTargetSummary);
+
+      console.log(`ページ巡回予定JSONを保存しました: ${pageTargetsPath}`);
+      console.log(`巡回対象ページ数: ${pageTargetSummary.total_pages}`);
 
       console.log(`リンク情報JSONを保存しました: ${summaryPath}`);
       console.log(summary);

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  createInitialPageTargets,
   createRootPageTarget,
   extractInternalPageTargets,
   normalizePageUrl,
@@ -99,10 +100,7 @@ test.describe("extractInternalPageTargets", () => {
       }),
     ];
 
-    const targets = extractInternalPageTargets(
-      links,
-      "https://example.com/",
-    );
+    const targets = extractInternalPageTargets(links, "https://example.com/");
 
     expect(targets).toHaveLength(1);
 
@@ -129,15 +127,10 @@ test.describe("extractInternalPageTargets", () => {
       }),
     ];
 
-    const targets = extractInternalPageTargets(
-      links,
-      "https://example.com/",
-    );
+    const targets = extractInternalPageTargets(links, "https://example.com/");
 
     expect(targets).toHaveLength(1);
-    expect(targets[0]?.normalized_url).toBe(
-      "https://example.com/entry",
-    );
+    expect(targets[0]?.normalized_url).toBe("https://example.com/entry");
   });
 
   test("hashだけが異なるURLを重複排除する", () => {
@@ -162,9 +155,7 @@ test.describe("extractInternalPageTargets", () => {
 
     expect(targets).toHaveLength(1);
     expect(targets[0]?.depth).toBe(2);
-    expect(targets[0]?.normalized_url).toBe(
-      "https://example.com/about",
-    );
+    expect(targets[0]?.normalized_url).toBe("https://example.com/about");
   });
 
   test("クエリ文字列が異なるURLは別ページとして残す", () => {
@@ -181,11 +172,44 @@ test.describe("extractInternalPageTargets", () => {
       }),
     ];
 
-    const targets = extractInternalPageTargets(
-      links,
-      "https://example.com/",
-    );
+    const targets = extractInternalPageTargets(links, "https://example.com/");
 
     expect(targets).toHaveLength(2);
+  });
+});
+
+test.describe("createInitialPageTargets", () => {
+  test("起点ページ自身へのリンクがあっても1件だけ残す", () => {
+    const links: LinkItem[] = [
+      createLinkItem({
+        order: 1,
+        resolved_url: "https://example.com/",
+        link_type: "internal",
+      }),
+      createLinkItem({
+        order: 2,
+        resolved_url: "https://example.com/about/",
+        link_type: "internal",
+      }),
+      createLinkItem({
+        order: 3,
+        resolved_url: "https://example.com/",
+        link_type: "internal",
+      }),
+    ];
+
+    const targets = createInitialPageTargets("https://example.com/", links);
+
+    expect(targets).toHaveLength(2);
+
+    expect(targets[0]).toEqual({
+      discovered_url: "https://example.com/",
+      normalized_url: "https://example.com/",
+      final_url: "https://example.com/",
+      depth: 0,
+      discovered_from: null,
+    });
+
+    expect(targets[1]?.normalized_url).toBe("https://example.com/about");
   });
 });
