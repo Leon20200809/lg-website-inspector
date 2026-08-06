@@ -10,9 +10,7 @@
     "test:headed": "playwright test --project=chromium --headed",
     "test:all": "playwright test",
     "report:html": "playwright show-report",
-    "report:md": "tsx scripts/report.ts",
     "report:pdf": "tsx scripts/pdf.ts",
-    "harness:ai": "tsx scripts/generate-ai-harness.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:watch": "tsc -p tsconfig.json --noEmit --watch"
   },

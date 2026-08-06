@@ -13,9 +13,6 @@ const IMAGES_DIR = "images";
 const FORM_DIR = "form";
 
 export const SUMMARY_FILES = {
-  smoke: "smoke-summary.json",
-  navigation: "navigation-summary.json",
-
   meta: "meta-summary.json",
   heading: "heading-summary.json",
   link: "link-summary.json",
