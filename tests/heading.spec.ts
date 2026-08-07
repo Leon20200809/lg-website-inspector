@@ -16,6 +16,11 @@ import {
 
 import type { HeadingItem, HeadingSummary } from "../types/heading-summary";
 
+import {
+  applyHeadingSummary,
+  collectHeadingItems,
+} from "../inspectors/heading-inspector";
+
 const activeSites = getActiveTargetSites();
 
 activeSites.forEach((targetSite) => {
@@ -51,47 +56,9 @@ activeSites.forEach((targetSite) => {
       applyPageOpenResult(summary, page.url(), response);
 
       // h1〜h3を取得
-      const headingElements = page.locator("h1, h2, h3");
+      const headings = await collectHeadingItems(page);
 
-      const headings: HeadingItem[] = await headingElements.evaluateAll(
-        (elements) => {
-          return elements.map((element, index) => {
-            const level = Number(
-              element.tagName.slice(1),
-            ) as HeadingItem["level"];
-
-            const text = (element.textContent ?? "")
-              .trim()
-              .replace(/\s+/g, " ");
-
-            return {
-              level,
-              text,
-              order: index + 1,
-            };
-          });
-        },
-      );
-
-      // 見出し数を集計
-      summary.headings = headings;
-      summary.total_headings = headings.length;
-
-      summary.h1_count = headings.filter(
-        (heading) => heading.level === 1,
-      ).length;
-
-      summary.h2_count = headings.filter(
-        (heading) => heading.level === 2,
-      ).length;
-
-      summary.h3_count = headings.filter(
-        (heading) => heading.level === 3,
-      ).length;
-
-      summary.empty_heading_count = headings.filter(
-        (heading) => heading.text === "",
-      ).length;
+      applyHeadingSummary(summary, headings);
     } catch (error: unknown) {
       // 検査失敗を記録
       summary.inspection_status = "failed";
