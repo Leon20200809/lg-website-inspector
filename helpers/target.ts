@@ -12,12 +12,12 @@ export const targetSites: TargetSite[] = [
     allow_form_submit: false,
   },
   {
-    id: "relations",
-    name: "relations.ne.jp",
-    base_url: "https://relations.ne.jp/",
+    id: "polyphony",
+    name: "大阪市の就労継続支援A型・B型事業所 ポリフォニー｜Web・デザイン・ECサイト制作",
+    base_url: "https://polyphony.dialogs.jp/",
     mode: "external",
     is_active: true,
-    expected_title_keywords: ["建設業"],
+    expected_title_keywords: ["A型事業所", "就職", "見学"],
     allow_form_submit: false,
   },
   {
