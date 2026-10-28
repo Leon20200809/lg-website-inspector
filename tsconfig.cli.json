@@ -8,6 +8,8 @@
   "include": [
     "scripts/inspect-initial.ts",
     "scripts/render-initial-report.ts",
+    "scripts/export-llm-case.ts",
+    "scripts/compare-llm-results.ts",
     "helpers/**/*.ts",
     "inspectors/**/*.ts",
     "types/**/*.ts"

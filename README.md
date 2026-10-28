@@ -4,6 +4,25 @@ PlaywrightとTypeScriptで公開Webページを観測し、証拠のJSON・画�
 
 現在の主な入口は、**URLを一つ指定して点検し、保存した証拠を人間が確認してレポートを整える**初回点検CLIです。サイトの目的や事業上の課題は、URLだけから確定しません。
 
+## このツールの使用技術
+
+| 技術 | このリポジトリでの役割 | 確認したバージョン |
+| --- | --- | --- |
+| Node.js / npm | CLIの実行と依存関係の管理 | 動作確認環境はNode.js 24.22.1 / npm 11.9.0 |
+| TypeScript | 観測データの型、Inspector、レポート処理 | lockfile: 7.0.2 |
+| Playwright Test | ブラウザ操作、DOM観測、画面保存、ローカル検証 | lockfile: 1.60.0 |
+| Chromium | 初回点検のPC/SP表示とPDF出力 | 実際のバージョンはrunのmanifestに記録 |
+| markdown-it | MarkdownをHTMLへ変換 | lockfile: 14.2.0 |
+| tsx | 従来のPDF用TypeScriptスクリプトの実行 | lockfile: 4.22.4 |
+
+新しいCLIはTypeScriptを`tsc`でJavaScriptへビルドしてNode.jsで実行します。Webアプリケーション用のReact・Next.js・Vue・Expressや、データベースは導入していません。観測記録はJSON、レポートはMarkdown・HTML・PDFのファイルです。対象サイトで見つかった技術と、このツール自身の依存関係は別々に扱います。
+
+本番コードの関数には、役割が直ちに分かるよう日本語のJSDoc要約を付けます。既存の引数・戻り値の補足は必要に応じて保持します。
+
+```ts
+/** 公開ページの観測から、根拠付きの初回レポート候補を生成する。 */
+```
+
 ## 最短で使う
 
 Node.js 24とnpmで動作確認しています。リポジトリのディレクトリで実行してください。
@@ -45,12 +64,15 @@ npm run inspect -- https://example.com/
 | リンク構造 | 内部・外部・アンカー・電話・メール等の分類、空hrefや仮リンク、アンカー移動先の候補 |
 | 画像 | img要素のsrc・currentSrc・alt・実寸・読み込み状態。スクロールでlazy画像の読み込みを促す |
 | フォーム構造 | フォームと入力項目、必須属性、ラベルやARIAによる名前の候補、送信ボタン等 |
+| 使用技術の手掛かり | 公開script/link・meta generator・既知ランタイム・限定した応答ヘッダ。実行時観測・自己申告・参照のみを区別 |
 | 横幅 | viewportと文書全体の幅、横方向のはみ出し候補 |
 | 画面の証拠 | ページとPC/SP条件ごとの表示範囲画像・全体画像、取得できた場合は最初の表示フォーム画像 |
 | 実行記録 | 実行ID、開始・終了時刻、ツール・ブラウザのバージョン、取得できた場合はソースコミット、採用・除外したURLと理由 |
 | 初回レポート | 観測結果に基づく良い点、確認候補、影響の仮説、質問、次の一手、点検範囲と未確認事項 |
 
 確認候補の自動抽出は、横方向のはみ出し、読み込みを確認できなかった画像、入力欄のラベル、ページタイトル、言語指定のルールを使います。現在の文面生成はルールベースで、AI APIによる分析は組み込んでいません。
+
+`checks.technology`には根拠そのものの`evidence`と、ツールが整理した候補の`detections`を保存します。候補の`confidence`は`runtime_observed`（既知プロパティの観測）、`declared`（ページの自己申告）、`reference_only`（URL等の参照のみ）です。版番号には`version_source`を付け、実行時の値とファイル名による参考値を区別します。技術が未検出でも不使用とは判定せず、サーバーやCMSの構成は証拠が足りなければ不明のままにします。
 
 HTTPエラーページや取得できなかった項目を、通常ページの「情報がない」という指摘へ置き換えない設計です。同じページのPC/SPで得た候補をまとめ、証拠IDと画像へ結び付けます。
 
@@ -119,6 +141,47 @@ npm run report:initial -- reports/<site-id>/<run-id>
 候補は確認済みを優先し、その後は優先度順で最大3件を本文へ掲載します。全候補はJSONに残ります。`confirmed`は事業への影響や修正の必要性まで証明するものではありません。全体を`completed`へ変えるだけで、顧客の同意や確認していない機能の動作を保証することにもなりません。
 
 再生成前に、JSONの形式、実行ID、証拠IDとURLの対応、画像・証拠ファイルの参照先を検証します。保存したrunの外にあるファイルや、外部画像URLへの置換は受け付けません。説明が事実に即しているか、顧客に提出してよいかは、人が判断してください。
+
+## 同じ事実とプロンプトで複数のLLMを比較する
+
+保存したrunから、モデルに依存しない実験入力を作れます。対象サイトの再取得や外部AI APIの呼び出しは行いません。
+
+```bash
+npm run llm:export -- reports/<site-id>/<run-id>
+```
+
+実行結果の`directory`が比較用フォルダです。`input.txt`には共通の指示・出力形式・取得事実がまとまっています。これを各サービスの新しい会話へ同じ内容で渡し、JSONだけの応答を`result-a.json`等として保存します。検索・追加資料・過去の会話の影響を揃え、同じモデルでも2回以上試すと、モデル間の差と試行ごとの差を見分けやすくなります。
+
+| ファイル | 役割 |
+| --- | --- |
+| `facts.json` | 事実ID、採取条件、取得状態、元JSONの参照位置を持つ観測データ |
+| `prompt.md` | 観測・仮説・質問・次の行動を分ける共通指示 |
+| `output.schema.json` | LLMが返すJSONの共通形式 |
+| `input.txt` | 指示・出力形式・事実を一つにした投入用テキスト |
+| `case-manifest.json` | 入力の各ファイルと実験全体のSHA-256を固定する記録 |
+| `run-metadata.template.json` | 実際に使ったモデル表示名・日時・設定を記録するひな型 |
+
+`facts.json`に人が書いた`report-content.json`、自動ルールが作る改善候補、画像そのものは含めません。技術候補の`detections`も外し、生の技術根拠を残します。DOMの分類や集計値は観測処理の出力として保持します。古いrunに技術観測がなければ`not_run`になります。観測失敗を正常扱いしたり、スクリーンショットを見ていないLLMに見た目の断定を求めたりしないためです。
+
+公開JavaScript等を別途静的に確認した事実がある場合は、取得日時・URL・元アセットのハッシュを含む補足JSONを指定できます。補足は人が記録した静的観測として分離し、実際の送信成功や受信到達の証明には使いません。
+
+```bash
+npm run llm:export -- reports/<site-id>/<run-id> --supplement supplemental-observations.json --output reports/<site-id>/llm-case-v1
+```
+
+形式は`types/llm-evaluation.ts`の`LlmSupplement`を参照してください。補足ファイルに人の評価・優先順位・営業上の仮説を入れないでください。任意のJavaScriptを自動で解析する機能ではありません。
+
+二つの応答を保存したら、同じ入力だったこと、JSON形式、引用した事実IDの存在を検証して比較します。
+
+```bash
+npm run llm:compare -- reports/<site-id>/<run-id>/llm-evaluation result-a.json result-b.json --output comparison.json
+```
+
+比較には引用事実IDの重なり、候補の分類とURLの重なり、順位・優先度の違いを使います。候補のURLは、入力に含まれる観測ページまたは静的確認した公開アセットです。同じ確認テーマでもページとアセットのどちらを対象に挙げるかで分類一致率は変わります。Jaccardは「共通する要素数÷両方にある要素の総数」で、文章の正しさの点数ではありません。両方空なら比較材料がないため`null`です。引用IDが存在していても、本文がその事実から言える内容かどうかは人が確認します。
+
+人が見る基準は、①観測と仮説が分かれているか、②重要な確認候補が揃うか、③不足した情報を正しく不明とするか、④未送信のフォーム・未測定の売上・非公開の構成を断言しないか、の4点です。同じ入力でも文章や候補の順番が同じになる保証はありません。モデル名・プロンプト・入力ハッシュ・公開されている設定を記録し、非公開のtemperatureやseedは推測せず`null`にします。
+
+出力済みの実験入力を異なる内容で上書きしません。観測や指示を変更する場合は別の`--output`へ出力し、別の実験として扱います。`llm:compare`も既存の比較結果ファイルを上書きしません。
 
 ## 任意の設定
 
@@ -272,8 +335,12 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/absolute/path/to/chrome npm run inspect -- 
 | `helpers/initial-inspection.ts` | PC/SP観測、実行状態、チェックポイント、証拠保存 |
 | `helpers/initial-findings.ts` | 観測からの候補生成と編集済みレポートJSONの検証 |
 | `helpers/initial-report-renderer.ts` | Markdown・HTML・PDFの生成 |
+| `inspectors/technology-inspector.ts` | 公開DOM・既知プロパティ・限定ヘッダの技術観測 |
+| `helpers/llm-evaluation.ts` | 事実と共通入力の固定、応答の形式・参照検証、比較 |
+| `scripts/export-llm-case.ts` / `scripts/compare-llm-results.ts` | LLM比較用ファイルの出力と結果の比較 |
+| `prompts/` | モデルに依存しないレビュー指示と出力JSON Schema |
 | `types/initial-report.ts` | 設定、manifest、観測、候補、レポートの型 |
-| `inspectors/` | meta・heading・link・image・formの情報収集 |
+| `inspectors/` | meta・heading・link・image・form・technologyの情報収集 |
 | `helpers/target.ts` | 従来のPlaywright検査の対象設定 |
 | `tests/` | ローカル検証と従来のサイト検査 |
 | `tsconfig.cli.json` | 初回点検CLI用のビルド設定 |

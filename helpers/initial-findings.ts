@@ -24,12 +24,12 @@ interface FindingGroup {
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 } as const;
 const RULE_ORDER = ["horizontal-overflow", "broken-image", "form-label", "missing-title", "missing-language"];
 
-/** A completed collection is different from an empty, failed, or unrun collection. */
+/** 取得完了の検査データだけを返し、失敗や未実施はnullとして扱う。 */
 function completedData<T>(check: ObservationCheck<T>): T | null {
   return check.status === "complete" ? check.data : null;
 }
 
-/** Do not turn an error page or an unsuccessful inspection into content findings. */
+/** 到達成功かつHTTP 2xxの観測で、改善候補の判定に使えるページか確認する。 */
 function hasUsablePage(page: PageObservation): boolean {
   const status = page.open?.http_status;
   return (
@@ -40,27 +40,33 @@ function hasUsablePage(page: PageObservation): boolean {
   );
 }
 
+/** リダイレクト後のURLを返し、未取得なら要求時のURLを使う。 */
 function pageUrl(page: PageObservation): string {
   return page.open?.final_url ?? page.requested_url;
 }
 
+/** 空白を整え、指定文字数を超える文字列を省略記号付きで短縮する。 */
 function shortText(value: string, maxLength = 180): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1)}…`;
 }
 
+/** 画像の参照先を短く表示し、埋め込み画像の長いデータは説明に置き換える。 */
 function imageLabel(value: string): string {
   return value.startsWith("data:") ? "埋め込み画像（詳細は観測JSON）" : shortText(value);
 }
 
+/** 観測したPC・スマートフォンの表示幅を読みやすい文字列にする。 */
 function conditionLabel(page: PageObservation): string {
   return `${page.viewport.name === "pc" ? "PC幅" : "スマートフォン幅"}${page.viewport.width}px`;
 }
 
+/** 配列の順序を保ちながら重複する値を取り除く。 */
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
+/** 指摘の種類に合う証拠画像を、保存済みの画像から優先順に選ぶ。 */
 function screenshotFor(page: PageObservation, rule: string): string | null {
   if (rule === "form-label") {
     return page.screenshots.form ?? page.screenshots.viewport ?? page.screenshots.full;
@@ -71,6 +77,7 @@ function screenshotFor(page: PageObservation, rule: string): string | null {
   return page.screenshots.viewport ?? page.screenshots.full;
 }
 
+/** 同じURL・同じ検査ルールの指摘をまとめ、重複しない観測と証拠を追加する。 */
 function addFinding(
   groups: Map<string, FindingGroup>,
   page: PageObservation,
@@ -90,6 +97,7 @@ function addFinding(
   }
 }
 
+/** 1ページの取得済みデータを5つのルールで調べ、確認候補を集める。 */
 function collectPageFindings(groups: Map<string, FindingGroup>, page: PageObservation): void {
   const layout = completedData(page.checks.layout);
   if (
@@ -169,12 +177,15 @@ function collectPageFindings(groups: Map<string, FindingGroup>, page: PageObserv
   }
 }
 
+/** 重複を除いたページ数と表示条件数を、説明用の文字列にする。 */
 function scopeText(pages: PageObservation[]): string {
   return `${unique(pages.map(pageUrl)).length}ページ・${pages.length}表示条件`;
 }
 
+/** 到達・タイトル・画像・横幅の観測から、根拠付きで確認できた良い点を作る。 */
 function buildStrengths(pages: PageObservation[]): ReportPoint[] {
   const strengths: ReportPoint[] = [];
+  /** 該当する観測がある場合だけ、良い点の文章と重複しない証拠IDを追加する。 */
   const add = (matched: PageObservation[], text: string): void => {
     if (matched.length > 0) strengths.push({ text, evidence_ids: unique(matched.map((page) => page.id)) });
   };
@@ -202,7 +213,7 @@ function buildStrengths(pages: PageObservation[]): ReportPoint[] {
   return strengths;
 }
 
-/** Make reviewable candidates from observed facts; customer approval is never inferred. */
+/** 観測事実から確認候補と良い点をまとめ、所有者レビュー前のレポート内容を作る。 */
 export function buildInitialReportContent(manifest: InitialRunManifest): InitialReportContent {
   const usablePages = manifest.pages.filter(hasUsablePage);
   const groups = new Map<string, FindingGroup>();
@@ -245,15 +256,18 @@ export function buildInitialReportContent(manifest: InitialRunManifest): Initial
   return content;
 }
 
+/** 検証に失敗した項目名と理由を含む例外を投げる。 */
 function invalid(path: string, message: string): never {
   throw new Error(`レポート検証エラー: ${path} ${message}`);
 }
 
+/** 値が配列やnullではないオブジェクトであることを検証する。 */
 function objectValue(value: unknown, path: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) invalid(path, "はオブジェクトにしてください。");
   return value as Record<string, unknown>;
 }
 
+/** 値が空白だけでない文字列で、指定した文字数以内か検証する。 */
 function textValue(value: unknown, path: string, maxLength: number): string {
   if (typeof value !== "string" || value.trim() === "" || value.length > maxLength) {
     invalid(path, `は空でない${maxLength}文字以内の文字列にしてください。`);
@@ -261,19 +275,23 @@ function textValue(value: unknown, path: string, maxLength: number): string {
   return value;
 }
 
+/** nullを許可し、それ以外は空白だけでない文字列と文字数上限を検証する。 */
 function nullableText(value: unknown, path: string, maxLength: number): void {
   if (value !== null) textValue(value, path, maxLength);
 }
 
+/** 値が配列で、指定した件数以内であることを検証する。 */
 function arrayValue(value: unknown, path: string, maxItems: number): unknown[] {
   if (!Array.isArray(value) || value.length > maxItems) invalid(path, `は${maxItems}件以内の配列にしてください。`);
   return value;
 }
 
+/** 値が許可された文字列の選択肢に含まれることを検証する。 */
 function enumValue(value: unknown, path: string, allowed: string[]): void {
   if (typeof value !== "string" || !allowed.includes(value)) invalid(path, `は${allowed.join(" / ")}のいずれかにしてください。`);
 }
 
+/** 証拠ファイルの参照が、実行フォルダ内を指す安全な相対パスか検証する。 */
 function relativeFile(value: unknown, path: string): string {
   const result = textValue(value, path, 2048);
   if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(result) || result.startsWith("/") || result.includes("\\") ||
@@ -283,6 +301,7 @@ function relativeFile(value: unknown, path: string): string {
   return result;
 }
 
+/** 重複のない証拠IDを検証し、今回の実行に属する観測へ対応付ける。 */
 function evidencePages(value: unknown, path: string, pages: Map<string, PageObservation>): PageObservation[] {
   const ids = arrayValue(value, path, 500).map((item, index) => textValue(item, `${path}[${index}]`, 200));
   if (ids.length === 0 || unique(ids).length !== ids.length) invalid(path, "は重複のない証拠IDを1件以上指定してください。");
@@ -293,7 +312,7 @@ function evidencePages(value: unknown, path: string, pages: Map<string, PageObse
   });
 }
 
-/** Validate hand-edited report JSON before regeneration, including its evidence references. */
+/** 編集したレポートJSONの項目と証拠参照が、今回の実行記録と整合するか検証する。 */
 export function validateReportContent(manifest: InitialRunManifest, content: unknown): void {
   const record = objectValue(content, "report");
   let serialized: string;

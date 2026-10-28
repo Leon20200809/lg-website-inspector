@@ -32,10 +32,7 @@ import type {
 export async function collectFormItems(page: Page): Promise<FormItem[]> {
   return page.locator("form").evaluateAll(
     (formElements, statuses) => {
-      /**
-       * 改行や連続した空白を整理し、
-       * 空文字ならnullへ変換する。
-       */
+      /** 改行や連続した空白を整理し、空文字ならnullへ変換する。 */
       const normalizeText = (
         value: string | null | undefined,
       ): string | null => {

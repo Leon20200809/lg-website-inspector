@@ -4,6 +4,7 @@ import { isIP } from "node:net";
 import type { InitialInspectionConfig, ScopeDecision } from "../types/initial-report";
 import type { LinkItem } from "../types/link-summary";
 
+/** 認証情報を含まないHTTP/HTTPS URLを検証し、末尾スラッシュを保ったままハッシュを除く。 */
 export function normalizeInspectionUrl(input: string): string {
   const url = new URL(input);
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
@@ -13,7 +14,7 @@ export function normalizeInspectionUrl(input: string): string {
   return url.href;
 }
 
-/** Keep trailing slashes: some servers distinguish /page and /page/. */
+/** 入力URLと任意設定を検証し、初回点検の対象範囲と既定値を組み立てる。 */
 export function createInitialConfig(input: string, options: Partial<InitialInspectionConfig> = {}): InitialInspectionConfig {
   const url = normalizeInspectionUrl(input);
   const parsed = new URL(url);
@@ -44,6 +45,7 @@ export function createInitialConfig(input: string, options: Partial<InitialInspe
   };
 }
 
+/** IPアドレスが、この点検で許可する公開アドレス範囲か判定する。 */
 export function isPublicAddress(address: string): boolean {
   const ip = address.replace(/^\[|\]$/g, "").toLowerCase();
   if (isIP(ip) === 4) {
@@ -59,6 +61,7 @@ export function isPublicAddress(address: string): boolean {
   return isIP(ip) === 6 && /^[23][0-9a-f]{0,3}:/.test(ip) && !ip.startsWith("2001:db8:");
 }
 
+/** URLのホストを名前解決し、明示許可したlocalhost以外への非公開接続を拒否する。 */
 export async function assertPublicUrl(input: string, allowLocal = false): Promise<void> {
   const url = new URL(normalizeInspectionUrl(input));
   const host = url.hostname.replace(/^\[|\]$/g, "");
@@ -70,6 +73,7 @@ export async function assertPublicUrl(input: string, allowLocal = false): Promis
   if (!addresses.length || addresses.some(item => !isPublicAddress(item.address))) throw new Error("公開IPアドレス以外への接続は対象外です。");
 }
 
+/** 公開DNSへHTTPSで問い合わせ、ホストのIPv4・IPv6アドレスを取得する。 */
 async function lookupOverHttps(host: string): Promise<{ address: string }[]> {
   const records = await Promise.all(["A", "AAAA"].map(async type => {
     const endpoint = new URL("https://dns.google/resolve");
@@ -83,6 +87,7 @@ async function lookupOverHttps(host: string): Promise<{ address: string }[]> {
   return records.flat();
 }
 
+/** URLが点検範囲から外れる理由を返し、対象にできる場合はnullを返す。 */
 export function scopeExclusionReason(url: string, config: InitialInspectionConfig): string | null {
   const parsed = new URL(url);
   if (!config.allowed_origins.includes(parsed.origin)) return "許可origin外";
@@ -92,6 +97,7 @@ export function scopeExclusionReason(url: string, config: InitialInspectionConfi
   return null;
 }
 
+/** 起点・重要URL・起点のリンクを優先順に並べ、上限内の点検対象を選ぶ。 */
 export function selectInitialScope(config: InitialInspectionConfig, links: LinkItem[], finalRootUrl = config.url): ScopeDecision[] {
   const candidates = new Map<string, { label: string; rank: number }>();
   candidates.set(config.url, { label: "起点", rank: -2 });

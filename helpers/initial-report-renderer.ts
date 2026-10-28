@@ -33,11 +33,12 @@ const PAGE_STATE_LABEL: Record<PageObservation["state"], string> = {
   skipped: "未実施",
 };
 
-/** Keep website-derived strings as text, including in the editable Markdown source. */
+/** サイト由来の文字列をエスケープし、Markdown構文として解釈されないようにする。 */
 function markdownText(value: string): string {
   return value.replace(/[\r\n]+/g, " ").replace(/[\\`*_{}\[\]()#+.!|>~<-]/g, "\\$&");
 }
 
+/** HTMLで特別な意味を持つ文字を実体参照へ置き換える。 */
 function htmlText(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
     const entities: Record<string, string> = {
@@ -47,6 +48,7 @@ function htmlText(value: string): string {
   });
 }
 
+/** 記録された日時を検証し、日本時間の表示用文字列に変換する。 */
 function formatJapanTime(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) throw new Error("実行日時を読み取れません。");
@@ -56,11 +58,13 @@ function formatJapanTime(value: string): string {
   }).format(date) + " JST";
 }
 
+/** URLのパスとクエリから、レポートに表示するページ名を作る。 */
 function pageLabel(value: string): string {
   const url = new URL(value);
   return url.pathname === "/" && !url.search ? "トップページ" : `${url.pathname}${url.search}`;
 }
 
+/** ページ内ハッシュを除いたURL同士が一致するか判定する。 */
 function sameUrl(first: string, second: string): boolean {
   const left = new URL(first);
   const right = new URL(second);
@@ -69,6 +73,7 @@ function sameUrl(first: string, second: string): boolean {
   return left.href === right.href;
 }
 
+/** 点検対象から外した理由を、顧客向けの表現に置き換える。 */
 function scopeReasonLabel(reason: string): string {
   const labels: Record<string, string> = {
     "許可origin外": "同じサイトの外",
@@ -78,7 +83,7 @@ function scopeReasonLabel(reason: string): string {
   return labels[reason] ?? reason;
 }
 
-/** Reject absolute paths, traversal, and symlinks escaping this run. */
+/** 相対パスと実体の保存先を検証し、今回の実行フォルダ内にあるファイルだけを返す。 */
 async function resolveRunFile(runDir: string, relativePath: string): Promise<string> {
   if (!relativePath || relativePath.includes("\\") || relativePath.includes("\0") ||
     path.posix.isAbsolute(relativePath) || path.win32.isAbsolute(relativePath) ||
@@ -94,6 +99,7 @@ async function resolveRunFile(runDir: string, relativePath: string): Promise<str
   return resolved;
 }
 
+/** 保存済み画像の実体と形式を検証し、HTMLへ埋め込むデータURLに変換する。 */
 async function readImage(runDir: string, relativePath: string): Promise<ReportImage> {
   const resolved = await resolveRunFile(runDir, relativePath);
   const bytes = await fs.readFile(resolved);
@@ -114,6 +120,7 @@ async function readImage(runDir: string, relativePath: string): Promise<ReportIm
   };
 }
 
+/** 保留・却下を除き、確認済みと優先度の順で掲載する指摘を最大3件選ぶ。 */
 function topFindings(content: InitialReportContent): InitialFinding[] {
   return content.findings.filter((finding) =>
     finding.review_status !== "dismissed" && finding.review_status !== "deferred",
@@ -123,8 +130,10 @@ function topFindings(content: InitialReportContent): InitialFinding[] {
   }).slice(0, 3);
 }
 
+/** ページごとのPC幅・スマホ幅の取得状態とHTTP応答をMarkdown表にする。 */
 function scopeTable(manifest: InitialRunManifest): string {
   const rows = [...new Set(manifest.pages.map((page) => page.requested_url))].map((url) => {
+    /** 指定したページと表示幅の取得状態・HTTP応答を、表に表示する文字列にする。 */
     const state = (viewport: "pc" | "sp"): string => {
       const page = manifest.pages.find((item) => item.requested_url === url && item.viewport.name === viewport);
       if (!page) return "未実施";
@@ -136,6 +145,7 @@ function scopeTable(manifest: InitialRunManifest): string {
   return ["| 確認したページ | PC幅 | スマホ幅 |", "| --- | --- | --- |", ...rows].join("\n");
 }
 
+/** 1件の指摘を、観測・仮説・質問・次の一手・証拠付きのMarkdownにする。 */
 function findingMarkdown(finding: InitialFinding, index: number): string {
   const status = finding.review_status === "confirmed" ? "観測確認済み" : "確認候補";
   const fields: [string, string][] = [
@@ -203,7 +213,7 @@ const REPORT_CSS = `
   @media print { a { color: inherit; text-decoration: none; } }
 `;
 
-/** Render one saved run only. No website is visited during this operation. */
+/** 保存済みの1回分の観測とレポート内容から、Markdown・HTML・PDFを再生成する。 */
 export async function renderInitialReport(
   runDir: string,
   manifest: InitialRunManifest,
@@ -244,11 +254,13 @@ export async function renderInitialReport(
   }
 
   const md = new MarkdownIt({ html: false, linkify: false, breaks: false });
+  /** 検証済みの画像だけを、代替テキスト付きのMarkdown画像参照にする。 */
   const markdownImage = (relativePath: string, alt: string): string => {
     const image = images.get(relativePath);
     if (!image) throw new Error(`確認済み画像がありません: ${relativePath}`);
     return `![${markdownText(alt)}](<${image.markdownPath}>)`;
   };
+  /** Markdownの画像参照を検証済みの埋め込み画像へ変換する。 */
   md.renderer.rules.image = (tokens, index) => {
     const token = tokens[index];
     const image = [...images.values()].find((item) => item.markdownPath === token?.attrGet("src"));
@@ -334,6 +346,7 @@ export async function renderInitialReport(
     `確認記録：${markdownText(manifest.run_id)}`,
   ].filter(Boolean).join("\n\n") + "\n";
 
+  /** 各レポートページの見出し帯を、エスケープ済みのHTMLで作る。 */
   const masthead = (section: string): string => `<div class="masthead"><span>LG WEBSITE INSPECTOR</span><span>${htmlText(section)}</span></div>`;
   const imageGrid = rootMarkdown.map((root) => `<figure>${root.image
     ? `<div class="image-box">${md.render(root.markdown)}</div>`

@@ -5,7 +5,7 @@ import type { InitialReportContent, InitialRunManifest } from "../types/initial-
 import { validateReportContent } from "../helpers/initial-findings";
 import { renderInitialReport } from "../helpers/initial-report-renderer";
 
-/** Rebuild the report from one saved run; this command never inspects a website. */
+/** 指定した実行フォルダのJSONを読み込み、サイトを再取得せずレポートを再生成する。 */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.length !== 1 || !args[0] || args[0].startsWith("--")) {

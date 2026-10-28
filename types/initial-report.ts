@@ -4,8 +4,9 @@ import type { HeadingItem } from "./heading-summary";
 import type { ImageItem } from "./image-summary";
 import type { LinkItem } from "./link-summary";
 import type { PageOpenResult } from "./page-open-result";
+import type { TechnologyObservation } from "./technology-summary";
 
-/** URL-only entry point. These defaults are generated internally, not customer requirements. */
+/** URL以外は内部の既定値で補える初回点検の設定を表す。 */
 export interface InitialInspectionConfig {
   url: string;
   site_id: string;
@@ -51,6 +52,7 @@ export interface PageObservation {
     images: ObservationCheck<ImageItem[]>;
     links: ObservationCheck<LinkItem[]>;
     layout: ObservationCheck<{ viewport_width: number; document_width: number; horizontal_overflow: boolean }>;
+    technology?: ObservationCheck<TechnologyObservation>;
   };
 }
 
@@ -100,7 +102,7 @@ export interface ReportPoint {
   evidence_ids: string[];
 }
 
-/** Saved alongside the manifest. Customer review remains pending until the owner responds. */
+/** 観測台帳と併存する編集用レポートを表し、本人の確認までレビュー待ちを維持する。 */
 export interface InitialReportContent {
   schema_version: 1;
   run_id: string;

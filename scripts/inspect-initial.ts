@@ -6,6 +6,7 @@ import { runInitialInspection, saveInitialJson } from "../helpers/initial-inspec
 import { buildInitialReportContent } from "../helpers/initial-findings";
 import { renderInitialReport } from "../helpers/initial-report-renderer";
 
+/** CLI引数から点検設定を作り、公開ページの観測と初回レポート生成を実行する。 */
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,

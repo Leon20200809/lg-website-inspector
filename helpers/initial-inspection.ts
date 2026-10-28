@@ -4,6 +4,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { chromium, type BrowserContext, type Page } from "@playwright/test";
 import { collectMetaInfo } from "../inspectors/meta-inspector";
+import { collectTechnologyInfo } from "../inspectors/technology-inspector";
 import { collectFormItems } from "../inspectors/form-inspector";
 import { collectHeadingItems } from "../inspectors/heading-inspector";
 import { collectImageItems, scrollThroughPage } from "../inspectors/image-inspector";
@@ -15,6 +16,7 @@ import type { PageOpenResult } from "../types/page-open-result";
 
 interface NavigationGuard {
   redirects: Map<string, { status: number; target: string }>;
+  responseHeaders: Map<string, Record<string, string>>;
 }
 
 export const INITIAL_VIEWPORTS: ViewportProfile[] = [
@@ -22,6 +24,7 @@ export const INITIAL_VIEWPORTS: ViewportProfile[] = [
   { name: "sp", width: 390, height: 844 },
 ];
 
+/** JSONを一時ファイル経由で保存し、書き込み途中の台帳が残るのを防ぐ。 */
 export function saveInitialJson(filename: string, value: unknown): void {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
   const tmp = `${filename}.${randomUUID()}.tmp`;
@@ -29,6 +32,7 @@ export function saveInitialJson(filename: string, value: unknown): void {
   fs.renameSync(tmp, filename);
 }
 
+/** 日時と乱数を組み合わせて、他の点検と衝突しない保存先を作る。 */
 export function createRunDirectory(config: InitialInspectionConfig, reportsDir = "reports"): { runDir: string; runId: string } {
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
   const runDir = path.resolve(reportsDir, config.site_id, runId);
@@ -36,25 +40,28 @@ export function createRunDirectory(config: InitialInspectionConfig, reportsDir =
   return { runDir, runId };
 }
 
+/** URLと表示幅に対応する未実施の観測レコードと証拠パスを作る。 */
 export function createPageObservation(url: string, viewport: ViewportProfile): PageObservation {
   const hash = createHash("sha256").update(url).digest("hex").slice(0, 12);
+  /** 未実施と取得失敗を区別できる空の検査結果を返す。 */
   const empty = <T>(): ObservationCheck<T> => ({ status: "not_run", data: null, error: null });
   return {
     id: `${viewport.name}-${hash}`, requested_url: url, viewport, observed_at: null, state: "pending", open: null,
     evidence_file: `chromium/${viewport.name}/${hash}/observation.json`,
     screenshots: { viewport: null, full: null, form: null }, screenshot_error: null,
-    checks: { meta: empty(), forms: empty(), headings: empty(), images: empty(), links: empty(), layout: empty() },
+    checks: { meta: empty(), forms: empty(), headings: empty(), images: empty(), links: empty(), layout: empty(), technology: empty() },
   };
 }
 
+/** 個別の収集を実行し、成功値または失敗理由を結果として返す。 */
 async function collectCheck<T>(collect: () => Promise<T>): Promise<ObservationCheck<T>> {
   try { return { status: "complete", data: await collect(), error: null }; }
   catch (error) { return { status: "failed", data: null, error: String(error) }; }
 }
 
-/** Guard navigation to the selected pages; resource requests remain public GET/HEAD only. */
+/** 対象範囲外の移動と送信通信を止め、転送先と公開応答ヘッダを記録する。 */
 async function installReadOnlyGuard(context: BrowserContext, config: InitialInspectionConfig, checked: Map<string, Promise<void>>): Promise<NavigationGuard> {
-  const guard: NavigationGuard = { redirects: new Map() };
+  const guard: NavigationGuard = { redirects: new Map(), responseHeaders: new Map() };
   await context.route("**/*", async route => {
     const request = route.request();
     const rawUrl = request.url();
@@ -78,6 +85,7 @@ async function installReadOnlyGuard(context: BrowserContext, config: InitialInsp
           await response.dispose();
           return route.abort("blockedbyclient");
         }
+        guard.responseHeaders.set(normalizeInspectionUrl(rawUrl), response.headers());
         await route.fulfill({ response });
         await response.dispose();
         return;
@@ -88,6 +96,7 @@ async function installReadOnlyGuard(context: BrowserContext, config: InitialInsp
   return guard;
 }
 
+/** 各リダイレクト先を範囲確認してから開き、循環や対象外への転送を止める。 */
 async function openScopedPage(page: Page, initialUrl: string, guard: NavigationGuard, config: InitialInspectionConfig): Promise<PageOpenResult> {
   let currentUrl = initialUrl;
   const visited = new Set<string>();
@@ -104,15 +113,18 @@ async function openScopedPage(page: Page, initialUrl: string, guard: NavigationG
   throw new Error("リダイレクト上限に達しました。");
 }
 
+/** 1ページの情報と画像を段階保存し、途中の移動や取得失敗も観測結果に残す。 */
 async function inspectPage(page: Page, record: PageObservation, runDir: string, checkpoint: () => void, guard: NavigationGuard, config: InitialInspectionConfig): Promise<void> {
   record.observed_at = new Date().toISOString();
   record.open = await openScopedPage(page, record.requested_url, guard, config);
   if (!record.open.opened) { record.state = "failed"; checkpoint(); return; }
   const observationUrl = page.url();
   let movedDuringObservation = false;
+  /** 観測開始後のメインページへの移動要求を検知する。 */
   const onNavigation = (request: import("@playwright/test").Request) => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame()) movedDuringObservation = true;
   };
+  /** 観測中のURL変化を検知して別ページの証拠混入を防ぐ。 */
   const onFrame = (frame: import("@playwright/test").Frame) => {
     if (frame === page.mainFrame() && normalizeInspectionUrl(frame.url()) !== normalizeInspectionUrl(observationUrl)) movedDuringObservation = true;
   };
@@ -122,6 +134,7 @@ async function inspectPage(page: Page, record: PageObservation, runDir: string, 
   try { await page.waitForLoadState("load", { timeout: 5000 }); }
   catch { /* bounded wait; image state remains independently recorded */ }
   record.checks.meta = await collectCheck(() => collectMetaInfo(page)); checkpoint();
+  record.checks.technology = await collectCheck(() => collectTechnologyInfo(page, guard.responseHeaders.get(normalizeInspectionUrl(observationUrl)))); checkpoint();
   record.checks.forms = await collectCheck(() => collectFormItems(page)); checkpoint();
   record.checks.headings = await collectCheck(() => collectHeadingItems(page)); checkpoint();
   record.checks.links = await collectCheck(async () => {
@@ -173,11 +186,13 @@ async function inspectPage(page: Page, record: PageObservation, runDir: string, 
   checkpoint();
 }
 
+/** 全ページの到達状況と検査状態から実行全体の完了度を判定する。 */
 export function summarizeRunStatus(pages: PageObservation[]): "complete" | "partial" | "failed" {
   if (!pages.some(page => page.open?.opened)) return "failed";
   return pages.every(page => page.state === "complete") ? "complete" : "partial";
 }
 
+/** 公開範囲内のページをPC・スマホ幅で巡回し、証拠と観測台帳を保存する。 */
 export async function runInitialInspection(config: InitialInspectionConfig, reportsDir = "reports"): Promise<{ runDir: string; manifest: InitialRunManifest }> {
   const { runDir, runId } = createRunDirectory(config, reportsDir);
   let commit: string | null = null;
@@ -195,15 +210,18 @@ export async function runInitialInspection(config: InitialInspectionConfig, repo
       "リンクは分類と選択ページへの到達のみ。全リンクや外部リンクのHTTP検査は未実施です。",
       "PC幅1280px・スマホ幅390pxのChromium表示。実機・メニュー操作・他ブラウザは未確認です。",
       "売上・問い合わせ件数・管理画面・更新状況・バックアップ・セキュリティ適合性は未確認です。",
+      "技術情報は公開DOM・既知の実行時プロパティ・応答ヘッダの観測です。バックエンドや技術の不使用は断定できません。",
       "外部埋め込み・非GET通信の制限や実行環境の影響があります。疑わしい表示は通常環境で再確認してください。",
     ],
   };
   manifest.pages = manifest.scope.filter(item => item.selected).flatMap(item =>
     INITIAL_VIEWPORTS.map(viewport => createPageObservation(item.url, viewport)));
+  /** 各ページの証拠JSONと実行全体の台帳を最新状態で保存する。 */
   const checkpoint = () => {
     for (const record of manifest.pages) saveInitialJson(path.join(runDir, record.evidence_file), record);
     saveInitialJson(path.join(runDir, "manifest.json"), manifest);
   };
+  /** 中断シグナルを受けた時点の観測状態を保存して終了する。 */
   const onSignal = () => { manifest.status = "interrupted"; manifest.finished_at = new Date().toISOString(); checkpoint(); process.exit(130); };
   process.once("SIGINT", onSignal); process.once("SIGTERM", onSignal);
   checkpoint();
