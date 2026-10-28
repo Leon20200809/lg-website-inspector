@@ -3,10 +3,16 @@ import { test } from "@playwright/test";
 import { getActiveTargetSites } from "../helpers/target";
 import { openPageTarget } from "../helpers/page-crawler";
 
-import { getPageSummaryJsonPath, SUMMARY_FILES } from "../helpers/report-paths";
+import {
+  getPageSummaryJsonPath,
+  getSummaryJsonPath,
+  SUMMARY_FILES,
+} from "../helpers/report-paths";
 
 import { saveJsonFile } from "../helpers/json-file";
 import { getJapanIsoString } from "../helpers/date";
+
+import type { PageTargetSummary } from "../types/page-target-summary";
 
 import {
   createRootPageTarget,
@@ -55,6 +61,7 @@ test.describe("サイト総合検査", () => {
   /**
    * 将来、正式な安全装置を考える。
    */
+  test.setTimeout(600_000);
 
   for (const targetSite of activeTargetSites) {
     test(`${targetSite.name}の事実を収集する`, async ({ page }) => {
@@ -119,6 +126,24 @@ test.describe("サイト総合検査", () => {
         "巡回対象:",
         pageTargets.map((target) => target.normalized_url),
       );
+
+      const pageTargetSummary: PageTargetSummary = {
+        site_id: targetSite.id,
+        site_name: targetSite.name,
+        base_url: targetSite.base_url,
+        generated_at: getJapanIsoString(),
+        total_pages: pageTargets.length,
+        pages: pageTargets,
+      };
+
+      const pageTargetsPath = getSummaryJsonPath(
+        targetSite.id,
+        SUMMARY_FILES.pageTargets,
+      );
+
+      saveJsonFile(pageTargetsPath, pageTargetSummary);
+
+      console.log(`ページ巡回予定JSONを保存しました: ${pageTargetsPath}`);
 
       /**
        * STEP 5
