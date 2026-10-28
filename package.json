@@ -6,6 +6,10 @@
     "test": "tests"
   },
   "scripts": {
+    "build:cli": "tsc -p tsconfig.cli.json",
+    "inspect": "npm run build:cli --silent && node dist/scripts/inspect-initial.js",
+    "report:initial": "npm run build:cli --silent && node dist/scripts/render-initial-report.js",
+    "test:local": "npm run build:cli --silent && playwright test \"tests/initial-.*\\.spec\\.ts\" tests/page-targets.spec.ts tests/page-crawler.spec.ts tests/report-paths.spec.ts --project=chromium --workers=1 --reporter=line",
     "test": "playwright test --project=chromium",
     "test:headed": "playwright test --project=chromium --headed",
     "test:all": "playwright test",

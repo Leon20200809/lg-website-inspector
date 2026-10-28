@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": [
+    "scripts/inspect-initial.ts",
+    "scripts/render-initial-report.ts",
+    "helpers/**/*.ts",
+    "inspectors/**/*.ts",
+    "types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "reports", "tests"]
+}
