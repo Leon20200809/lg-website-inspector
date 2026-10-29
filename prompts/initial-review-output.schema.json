@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "初回点検レビュー v1",
+  "description": "形式と参照の検証用。記述の正しさは人が確認する。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "case_sha256",
+    "facts_sha256",
+    "summary",
+    "strengths",
+    "technologies",
+    "opportunities",
+    "unknowns",
+    "next_questions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "facts_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statement",
+        "fact_ids"
+      ],
+      "properties": {
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "fact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^f-[a-f0-9]{16}$"
+          }
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "statement",
+          "fact_ids"
+        ],
+        "properties": {
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "fact_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^f-[a-f0-9]{16}$"
+            }
+          }
+        }
+      }
+    },
+    "technologies": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "version",
+          "certainty",
+          "statement",
+          "fact_ids"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 120
+          },
+          "certainty": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "inferred",
+              "unknown"
+            ]
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "fact_ids": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 30,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^f-[a-f0-9]{16}$"
+            }
+          }
+        }
+      }
+    },
+    "opportunities": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "priority_reason",
+          "observation",
+          "hypothesis",
+          "question",
+          "next_action",
+          "category",
+          "page_url",
+          "priority",
+          "fact_ids"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "priority_reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "observation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "hypothesis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "next_action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "form_receipt",
+              "form_label",
+              "form_required_attributes",
+              "contact_routing",
+              "image_loading",
+              "layout_overflow",
+              "metadata",
+              "technology_maintenance",
+              "other"
+            ]
+          },
+          "page_url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "fact_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^f-[a-f0-9]{16}$"
+            }
+          }
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      }
+    },
+    "next_questions": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      }
+    },
+    "case_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

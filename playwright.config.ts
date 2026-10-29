@@ -26,6 +26,9 @@ export default defineConfig({
 
   // 全ブラウザで共通して使う設定
   use: {
+    launchOptions: {
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    },
     // 再試行が発生した最初の失敗時だけトレースを保存する
     trace: "on-first-retry",
   },

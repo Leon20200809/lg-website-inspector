@@ -8,8 +8,7 @@ import type { Page, Response } from "@playwright/test";
 import type { BaseInspectionSummary } from "../types/common";
 
 /**
- * 検査対象ページを開き、
- * 最初のHTML解析が完了するまで待つ。
+ * 検査対象ページを開き、最初のHTML解析が完了するまで待つ。
  *
  * CSS・画像・JavaScriptなどの読込完了までは待たない。
  * それらが必要な検査は、呼び出し側で
@@ -29,8 +28,7 @@ export async function openInspectionPage(
 }
 
 /**
- * ページを開いた結果を、
- * 各検査で共通するSummary情報へ反映する。
+ * ページを開いた結果を、各検査で共通するSummary情報へ反映する。
  *
  * リダイレクト後の実際のURLを保存し、
  * HTTPレスポンスを取得できなかった場合や、
