@@ -30,9 +30,7 @@ const md = new MarkdownIt({
   breaks: true,
 });
 
-/**
- * HTMLドキュメント全体を作る
- */
+/** Markdownを本文へ変換し、印刷用スタイル付きのHTMLドキュメントを作る。 */
 const buildHtmlDocument = (title: string, markdown: string): string => {
   const bodyHtml = md.render(markdown);
 
@@ -134,9 +132,7 @@ ${bodyHtml}
 </html>`;
 };
 
-/**
- * 1サイト分の Markdown を HTML / PDF に変換する
- */
+/** 1サイト分の保存済みMarkdownを読み込み、HTMLとPDFを生成する。 */
 const generatePdfForSite = async (
   siteId: string,
   siteName: string,
@@ -183,9 +179,7 @@ const generatePdfForSite = async (
   console.log(`PDFを生成しました: ${pdfPath}`);
 };
 
-/**
- * active な対象サイト分だけ PDF を生成する
- */
+/** 有効な検査対象サイトについて、保存済みMarkdownから順にPDFを生成する。 */
 const main = async (): Promise<void> => {
   for (const targetSite of activeSites) {
     await generatePdfForSite(targetSite.id, targetSite.name);

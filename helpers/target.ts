@@ -31,9 +31,7 @@ export const targetSites: TargetSite[] = [
   },
 ];
 
-/**
- * 有効なテスト対象サイトだけを返す。
- */
+/** 有効なテスト対象サイトだけを返す。 */
 export const getActiveTargetSites = (): TargetSite[] => {
   return targetSites.filter((site) => site.is_active);
 };

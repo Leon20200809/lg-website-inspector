@@ -36,9 +36,7 @@ export async function collectRawLinks(page: Page): Promise<RawLink[]> {
 }
 
 /**
- * DOMから取得した未加工リンクを、
- * 分類・URL解決・アンカー照合済みの
- * LinkItem[]へ整形する。
+ * DOMから取得した未加工リンクを、分類・URL解決・アンカー照合済みのLinkItem配列に整える。
  *
  * この関数はDOMへアクセスせず、
  * 引数として受け取ったデータだけを使用する。
@@ -137,8 +135,7 @@ export function createLinkItems(
 }
 
 /**
- * ページ内に存在する空でないid属性値を収集し、
- * アンカー移動先の存在確認に使えるSetとして返す。
+ * ページ内の空でないid属性値を集め、アンカー移動先の確認に使うSetとして返す。
  *
  * evaluateAll()内のブラウザ側では、
  * JSONへ変換しやすいstring[]として返す。
@@ -158,8 +155,7 @@ export async function collectExistingIdSet(page: Page): Promise<Set<string>> {
 }
 
 /**
- * 収集したリンク情報を、
- * ページ全体のリンク集計結果へ反映する。
+ * 収集したリンク情報を、ページ全体のリンク集計結果へ反映する。
  *
  * @param summary 更新対象となるリンク検査結果
  * @param links ページ内から収集したリンク情報
@@ -213,8 +209,7 @@ export function applyLinkSummary(
 }
 
 /**
- * ページ内アンカーURLから、
- * 移動先となるid属性値を取得する。
+ * ページ内アンカーURLから、移動先となるid属性値を取得する。
  *
  * 例：
  * "#contact"
@@ -309,8 +304,7 @@ function isPlaceholderLink(href: string | null): boolean {
 }
 
 /**
- * HTMLに書かれたhrefを、
- * 現在ページを基準とした絶対URLへ変換する。
+ * HTMLに書かれたhrefを、現在ページを基準とした絶対URLへ変換する。
  *
  * "/contact/"や"../company/"などの相対URLにも対応する。
  *
@@ -334,8 +328,7 @@ function getResolvedUrl(href: string | null, pageUrl: string): string | null {
 }
 
 /**
- * hrefの内容と現在ページのURLをもとに、
- * リンクの種類を判定する。
+ * hrefの内容と現在ページのURLをもとに、リンクの種類を判定する。
  *
  * URLの構造解析には正規表現ではなく、
  * JavaScript標準のURLクラスを使用する。

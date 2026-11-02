@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 /**
  * 指定されたパスにJSONファイルを保存する。
  *
@@ -7,10 +10,6 @@
  * @param file_path JSONファイルの保存先パス
  * @param data JSONとして保存したいデータ
  */
-
-import fs from "fs";
-import path from "path";
-
 export function saveJsonFile(file_path: string, data: unknown): void {
   // ファイルパスから、親フォルダのパスを取り出す(フォルダ部分だけを取り出す)
   const dir_path = path.dirname(file_path);

@@ -1,6 +1,4 @@
-/**
- * 現在日時を日本時間のISO形式で返す。
- */
+/** 現在日時を日本時間のISO形式で返す。 */
 export function getJapanIsoString(): string {
   const now = new Date();
 

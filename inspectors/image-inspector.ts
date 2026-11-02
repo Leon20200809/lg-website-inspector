@@ -83,9 +83,7 @@ export async function scrollThroughPage(page: Page): Promise<void> {
 }
 
 /**
- * 表示されている各画像について、
- * 読み込み成功・失敗・タイムアウトのいずれかが
- * 確定するまで待機する。
+ * 表示されている各画像の読み込みが、成功・失敗・タイムアウトのいずれかになるまで待つ。
  *
  * display:noneなどの非表示画像は待機対象から除外する。
  *

@@ -1,6 +1,4 @@
-/**
- * レポート関連ファイルの保存先・ファイル名を管理する。
- */
+/** レポート関連ファイルの保存先・ファイル名を管理する。 */
 
 import { createHash } from "node:crypto";
 import path from "path";
@@ -23,9 +21,7 @@ export const SUMMARY_FILES = {
   form: "form-summary.json",
 } as const;
 
-/**
- * URLのパス部分を安全なディレクトリ名へ変換する。
- */
+/** URLのパス部分を安全なディレクトリ名へ変換する。 */
 function sanitizePagePathSegment(segment: string): string {
   const sanitized = segment
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
@@ -41,16 +37,12 @@ function sanitizePagePathSegment(segment: string): string {
     : safeSegment;
 }
 
-/**
- * 正規化URLから保存先識別用の短い指紋を作る。
- */
+/** 正規化URLから保存先識別用の短い指紋を作る。 */
 function createPageFingerprint(pageUrl: string): string {
   return createHash("sha256").update(pageUrl).digest("hex").slice(0, 8);
 }
 
-/**
- * ページURLをレポート保存用のパス要素へ変換する。
- */
+/** ページURLをレポート保存用のパス要素へ変換する。 */
 function getPagePathSegments(pageUrl: string): string[] {
   const normalizedUrl = normalizePageUrl(pageUrl);
   const url = new URL(normalizedUrl);
@@ -71,25 +63,27 @@ function getPagePathSegments(pageUrl: string): string[] {
   return pageSegments;
 }
 
+/** サイトIDに対応するレポート保存ディレクトリのパスを返す。 */
 export function getReportDir(siteId: string): string {
   return path.join(REPORTS_DIR, siteId);
 }
 
+/** サイトごとの検査JSONを保存するdataディレクトリのパスを返す。 */
 export function getReportDataDir(siteId: string): string {
   return path.join(getReportDir(siteId), DATA_DIR);
 }
 
+/** サイトごとの証拠画像を保存するimagesディレクトリのパスを返す。 */
 export function getReportImagesDir(siteId: string): string {
   return path.join(getReportDir(siteId), IMAGES_DIR);
 }
 
+/** サイトIDとファイル名から、検査集計JSONの保存先パスを作る。 */
 export function getSummaryJsonPath(siteId: string, fileName: string): string {
   return path.join(getReportDataDir(siteId), fileName);
 }
 
-/**
- * 1ページ分の検査結果を保存するディレクトリを返す。
- */
+/** 1ページ分の検査結果を保存するディレクトリを返す。 */
 export function getPageReportDir(siteId: string, pageUrl: string): string {
   return path.join(
     getReportDir(siteId),
@@ -98,9 +92,7 @@ export function getPageReportDir(siteId: string, pageUrl: string): string {
   );
 }
 
-/**
- * 1ページ分の検査JSON保存先を返す。
- */
+/** 1ページ分の検査JSON保存先を返す。 */
 export function getPageSummaryJsonPath(
   siteId: string,
   pageUrl: string,

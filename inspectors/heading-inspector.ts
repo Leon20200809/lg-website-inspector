@@ -2,9 +2,7 @@ import type { Page } from "@playwright/test";
 
 import type { HeadingItem, HeadingSummary } from "../types/heading-summary";
 
-/**
- * ページ内のh1〜h3から見出し情報を収集する。
- */
+/** ページ内のh1〜h3から見出し情報を収集する。 */
 export async function collectHeadingItems(page: Page): Promise<HeadingItem[]> {
   const headingElements = page.locator("h1, h2, h3");
 
@@ -23,9 +21,7 @@ export async function collectHeadingItems(page: Page): Promise<HeadingItem[]> {
   });
 }
 
-/**
- * 収集した見出し情報をページ全体の集計へ反映する。
- */
+/** 収集した見出し情報をページ全体の集計へ反映する。 */
 export function applyHeadingSummary(
   summary: HeadingSummary,
   headings: HeadingItem[],
