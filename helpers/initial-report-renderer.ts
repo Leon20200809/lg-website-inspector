@@ -58,10 +58,23 @@ function formatJapanTime(value: string): string {
   }).format(date) + " JST";
 }
 
-/** URLのパスとクエリから、レポートに表示するページ名を作る。 */
+/** 表示用URLのパスだけをデコードし、不正なエンコードは元の表記を保つ。 */
+export function displayUrl(value: string): string {
+  const suffixIndex = value.search(/[?#]/);
+  const pathname = suffixIndex < 0 ? value : value.slice(0, suffixIndex);
+  const suffix = suffixIndex < 0 ? "" : value.slice(suffixIndex);
+  try {
+    // URIの区切り文字は保ち、クエリ・フラグメントと取得・証拠用URLは変更しない。
+    return decodeURI(pathname) + suffix;
+  } catch {
+    return value;
+  }
+}
+
+/** URLのパス・クエリ・フラグメントから、レポートに表示するページ名を作る。 */
 function pageLabel(value: string): string {
   const url = new URL(value);
-  return url.pathname === "/" && !url.search ? "トップページ" : `${url.pathname}${url.search}`;
+  return url.pathname === "/" && !url.search && !url.hash ? "トップページ" : displayUrl(`${url.pathname}${url.search}${url.hash}`);
 }
 
 /** ページ内ハッシュを除いたURL同士が一致するか判定する。 */
@@ -326,7 +339,7 @@ export async function renderInitialReport(
     : "観測事実と、事業への影響の仮説を分けて記載しています。";
 
   const markdown = [
-    "# サイト初回点検レポート", markdownText(content.display_name), markdownText(manifest.config.url),
+    "# サイト初回点検レポート", markdownText(content.display_name), markdownText(displayUrl(manifest.config.url)),
     `確認日時：${markdownText(period)}`, `確認状態：${ownerStatus}`,
     `対象：${uniquePages}ページ / 取得完了 ${completeCount}件（ページと表示条件の組み合わせ）`,
     "## 今回わかったこと", markdownText(content.summary),
@@ -361,7 +374,7 @@ export async function renderInitialReport(
   const body = `
   <section class="report-page">${masthead("01 / 初回点検の概要")}
     <h1>サイト初回点検レポート</h1>
-    <p class="client-name">${htmlText(content.display_name)}</p><p class="site-url">${htmlText(manifest.config.url)}</p>
+    <p class="client-name">${htmlText(content.display_name)}</p><p class="site-url">${htmlText(displayUrl(manifest.config.url))}</p>
     <div class="meta"><span>確認日時：${htmlText(reportDate)}</span><span>${htmlText(ownerStatus)}</span><span>対象：${uniquePages}ページ / PC幅・スマホ幅</span><span>取得完了：${completeCount}件 / ${manifest.pages.length}件</span></div>
     <div class="summary">${md.render(markdownText(content.summary))}</div>
     ${md.render("## 確認できた良い点\n\n" + strengthsMarkdown)}
